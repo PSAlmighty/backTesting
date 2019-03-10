@@ -29,7 +29,8 @@ class TurtleStrategy01(bt.Strategy):
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
-
+        self.datahigh = self.datas[0].high
+        self.datalow = self.datas[0].low
         # To keep track of pending orders and buy price/commission
         self.order = None
         self.entryprice = None
@@ -44,22 +45,22 @@ class TurtleStrategy01(bt.Strategy):
         self.atrValue = None
         self.exitPrice = 0
         # Add a MovingAverageSimple indicator
-        self.longEntry = bt.indicators.Highest(self.datas[1],period=self.params.longIN)
+        self.longEntry = bt.indicators.Highest(self.datas[0],period=self.params.longIN)
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.datas[1],period=self.params.shortIN)
+            self.datas[0],period=self.params.shortIN)
         self.longExit = bt.indicators.Lowest(
-            self.datas[1], period=self.params.longExit)
+            self.datas[0], period=self.params.longExit)
 
         self.shortExit = bt.indicators.Highest(
-            self.datas[1], period=self.params.shortExit)
+            self.datas[0], period=self.params.shortExit)
         
         
         self.atrValue = bt.indicators.ATR(
-            self.datas[1], period=self.params.atrDays, plot=False)
+            self.datas[0], period=self.params.atrDays, plot=False)
         self.sma = bt.indicators.SimpleMovingAverage(
-            self.datas[1], period=self.params.maperiod)
+            self.datas[0], period=self.params.maperiod)
         '''
         # Indicators for the plotting show
         bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
@@ -124,22 +125,22 @@ class TurtleStrategy01(bt.Strategy):
         if not self.position:
             self.entryNo = 0 
             # Not yet ... we MIGHT BUY if ...
-            if self.dataclose[0] > self.longEntry[0]:
+            if self.datahigh[0] > self.longEntry[0]:
 
                 # BUY, BUY, BUY!!! (with all possible default parameters)
-                self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                self.log('BUY CREATE, %.2f' % self.longEntry[0])
                 self.log('Long Entry, %.2f' % self.longEntry[0])
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.buy()
+                self.order = self.buy(price=self.longEntry[0])
                 self.entryNo += 1
-                self.lastEntryPrice = self.dataclose[0]
+                self.lastEntryPrice = self.longEntry[0]
                 self.entryAtr = self.atrValue[0]
             
-            elif self.dataclose[0] < self.shortEntry[0]:
-                self.log('Short Create, %.2f'% self.dataclose[0])
-                self.order =self.sell()
+            elif self.datalow[0] < self.shortEntry[0]:
+                self.log('Short Create, %.2f'% self.datalow[0])
+                self.order =self.sell(price=self.shortEntry[0])
                 self.entryNo += 1
-                self.lastEntryPrice = self.dataclose[0]     
+                self.lastEntryPrice = self.shortEntry[0]    
                 self.entryAtr = self.atrValue[0]           
             
         else:
@@ -153,24 +154,24 @@ class TurtleStrategy01(bt.Strategy):
                 #self.log('Last Entry, %.2f'% self.lastEntryPrice)
                 #self.log('Entry ATR, %.2f'% self.entryAtr)                                                      
                 if self.entryNo ==1 and self.lastEntryPrice >  0 \
-                    and self.dataclose[0] > self.lastEntryPrice + self.entryAtr:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    and self.datahigh[0] > self.lastEntryPrice + self.entryAtr:
+                    self.log('BUY CREATE, %.2f' % (self.lastEntryPrice + self.entryAtr))
     
                     # Keep track of the created order to avoid a 2nd order
-                    self.order = self.buy()
+                    self.order = self.buy(price=self.lastEntryPrice + self.entryAtr)
                     self.entryNo += 1
-                    self.lastEntryPrice = self.dataclose[0]                    
+                    self.lastEntryPrice = self.lastEntryPrice + self.entryAtr                   
                 elif self.entryNo ==2 and self.lastEntryPrice >  0 \
-                    and self.dataclose[0] > self.lastEntryPrice + 0.5*self.entryAtr:
+                    and self.datahigh[0] > self.lastEntryPrice + 0.5*self.entryAtr:
 
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    self.log('BUY CREATE, %.2f' % (self.lastEntryPrice + 0.5*self.entryAtr))
     
                     # Keep track of the created order to avoid a 2nd order
-                    self.order = self.buy()
+                    self.order = self.buy(price=self.lastEntryPrice + 0.5*self.entryAtr)
                     self.entryNo += 1
-                    self.lastEntryPrice = self.dataclose[0]  
-                elif self.dataclose[0] < self.exitPrice:
-                    self.close()
+                    self.lastEntryPrice = self.lastEntryPrice + 0.5*self.entryAtr  
+                elif self.datalow[0] < self.exitPrice:
+                    self.close(price = self.exitPrice)
                 else:
                     pass
             else:
@@ -180,24 +181,24 @@ class TurtleStrategy01(bt.Strategy):
                     else:
                         self.exitPrice = self.shortExit[0]
                     if self.entryNo ==1 and self.lastEntryPrice >  0 \
-                        and self.dataclose[0] < self.lastEntryPrice - self.entryAtr:
-                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                        and self.datalow[0] < self.lastEntryPrice - self.entryAtr:
+                        self.log('SELL CREATE, %.2f' % (self.lastEntryPrice - self.entryAtr))
         
                         # Keep track of the created order to avoid a 2nd order
-                        self.order = self.sell()
+                        self.order = self.sell(price=self.lastEntryPrice - self.entryAtr)
                         self.entryNo += 1
-                        self.lastEntryPrice = self.dataclose[0]                    
+                        self.lastEntryPrice = self.lastEntryPrice - self.entryAtr                
                     elif self.entryNo ==2 and self.lastEntryPrice >  0 \
-                        and self.dataclose[0] < self.lastEntryPrice - 0.5*self.entryAtr:
+                        and self.datalow[0] < self.lastEntryPrice - 0.5*self.entryAtr:
     
-                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                        self.log('SELL CREATE, %.2f' % (self.lastEntryPrice - 0.5*self.entryAtr))
         
                         # Keep track of the created order to avoid a 2nd order
-                        self.order = self.sell()
+                        self.order = self.sell(price=self.lastEntryPrice - 0.5*self.entryAtr)
                         self.entryNo += 1
-                        self.lastEntryPrice = self.dataclose[0]  
-                    elif self.dataclose[0] > self.exitPrice:
-                        self.close()
+                        self.lastEntryPrice = self.lastEntryPrice - 0.5*self.entryAtr
+                    elif self.datahigh[0] > self.exitPrice:
+                        self.close(price = self.exitPrice)
                     else:
                         pass                
   
@@ -219,30 +220,17 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/test1Minnew.csv')
+    datapath = os.path.join(modpath, './datas/orcl-1995-2014.txt')
 
-    tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
-                   monthly=bt.TimeFrame.Months)
-    
-
-    
-    
     # Create a Data Feed
-    
-    data = bt.feeds.GenericCSVData(
+    data = bt.feeds.YahooFinanceCSVData(
         dataname=datapath,
-        datetime=9,
-        fromdate=datetime.datetime(2006, 01, 02),
-        todate=datetime.datetime(2006, 03, 01),
-        timeframe= bt.TimeFrame.Minutes,
-        compression=1,
-        dtformat=('%Y-%m-%d %H:%M:%S'),
-        open=3,
-        high=4,
-        low=5,
-        close=6,
-        volume=7,
-        openinterest=8)
+        # Do not pass values before this date
+        fromdate=datetime.datetime(1995, 1, 1),
+        # Do not pass values before this date
+        todate=datetime.datetime(2005, 5, 31),
+        # Do not pass values after this date
+        reverse=False)
     '''
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2006, 01, 02),
         todate=datetime.datetime(2006, 02, 01),
@@ -253,13 +241,13 @@ if __name__ == '__main__':
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
 
-    cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
+    #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(20000.0)
+    cerebro.broker.setcash(200000.0)
 
     # Add a FixedSize sizer according to the stake
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=1000)
 
     # Set the commission
     cerebro.broker.setcommission(commission=0.0)
