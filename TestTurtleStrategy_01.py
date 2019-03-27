@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import datetime  # For datetime objects
 import os.path  # To manage paths
 import sys  # To find out the script name (in argv[0])
-
+import pandas as pd
 # Import the backtrader platform
 import backtrader as bt
 import backtrader.analyzers as btanalyzers
@@ -13,11 +13,10 @@ import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('maperiod', 5),
         ('longIN',20 ),
-        ('shortIN',20 ),
+        ('differIN',1 ),
         ('longExit',10 ),
-        ('shortExit',10 ),
+        ('differExit',1 ),
         ('atrDays',20 ),
         ('atrNo',2)
     )
@@ -29,6 +28,9 @@ class TurtleStrategy01(bt.Strategy):
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
+        self.tradeCount = 0
+        self.winCount = 0
+        self.loseCount = 0
 
         # To keep track of pending orders and buy price/commission
         self.order = None
@@ -48,18 +50,17 @@ class TurtleStrategy01(bt.Strategy):
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.datas[1],period=self.params.shortIN)
+            self.datas[1],period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
             self.datas[1], period=self.params.longExit)
 
         self.shortExit = bt.indicators.Highest(
-            self.datas[1], period=self.params.shortExit)
+            self.datas[1], period=(self.params.longExit+self.params.differExit))
         
         
         self.atrValue = bt.indicators.ATR(
             self.datas[1], period=self.params.atrDays, plot=False)
-        self.sma = bt.indicators.SimpleMovingAverage(
-            self.datas[1], period=self.params.maperiod)
+
         '''
         # Indicators for the plotting show
         bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
@@ -97,6 +98,7 @@ class TurtleStrategy01(bt.Strategy):
                           order.executed.comm))
 
             self.bar_executed = len(self)
+            self.tradeCount += 1
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             self.log('Order Canceled/Margin/Rejected')
@@ -110,6 +112,10 @@ class TurtleStrategy01(bt.Strategy):
 
         self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
                  (trade.pnl, trade.pnlcomm))
+        if trade.pnl > 0:
+            self.winCount += 1
+        else:
+            self.loseCount += 1
 
     def next(self):
 
@@ -143,7 +149,7 @@ class TurtleStrategy01(bt.Strategy):
                 self.entryAtr = self.atrValue[0]           
             
         else:
-            if self.position > 0 :
+            if self.position.size > 0 :
                 if self.lastEntryPrice - 2* self.entryAtr > self.longExit[0]:
                     self.exitPrice = self.lastEntryPrice - 2* self.entryAtr
                 else:
@@ -174,7 +180,7 @@ class TurtleStrategy01(bt.Strategy):
                 else:
                     pass
             else:
-                if self.position < 0 :
+                if self.position.size < 0 :
                     if self.lastEntryPrice + 2* self.entryAtr < self.shortExit[0]:
                         self.exitPrice = self.lastEntryPrice + 2* self.entryAtr
                     else:
@@ -202,14 +208,14 @@ class TurtleStrategy01(bt.Strategy):
                         pass                
   
     def stop(self):
-        print('(MA Period %2d) Ending Value %.2f' %
-                 (self.params.maperiod, self.broker.getvalue()))
+        print('%2d,%2d,%2d,%2d,%2d,%2d,%2d,%2d,%.2f' %
+                 (self.params.longIN,self.params.differIN,self.params.longExit,self.params.differExit,self.params.atrDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
 
 
 if __name__ == '__main__':
     # Create a cerebro entity
     cerebro = bt.Cerebro()
-
+    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.005)
 
     # Add a strategy
     cerebro.addstrategy(TurtleStrategy01)
@@ -219,54 +225,59 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/test1Minnew.csv')
+    datapath = os.path.join(modpath, './datas/rbindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
     
 
     
-    
+    print(datapath)
     # Create a Data Feed
     
+    '''
     data = bt.feeds.GenericCSVData(
         dataname=datapath,
-        datetime=9,
-        fromdate=datetime.datetime(2006, 01, 02),
-        todate=datetime.datetime(2006, 03, 01),
+        datetime=1,
+        fromdate=datetime.datetime(2009, 01, 01),
+        todate=datetime.datetime(2009, 07, 10),
         timeframe= bt.TimeFrame.Minutes,
         compression=1,
         dtformat=('%Y-%m-%d %H:%M:%S'),
-        open=3,
-        high=4,
-        low=5,
-        close=6,
-        volume=7,
-        openinterest=8)
+        open=2,
+        high=3,
+        low=4,
+        close=5,
+        volume=6)
     '''
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2006, 01, 02),
-        todate=datetime.datetime(2006, 02, 01),
+    p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
+    p0.drop("seqno",axis=1, inplace=True)
+    #print(p0)
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 01, 02),
+        todate=datetime.datetime(2009, 10, 01),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)
-    '''
+    
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
 
     cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
-    # Set our desired cash start
-    cerebro.broker.setcash(20000.0)
+    #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
+    # Set our desired cash start
+    cerebro.broker.setcash(50000.0)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=2)
     # Add a FixedSize sizer according to the stake
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
+    #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
 
     # Set the commission
-    cerebro.broker.setcommission(commission=0.0)
+    #cerebro.broker.setcommission(commission=0.0)
 
     # Print out the starting conditions
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-
+    print("LongIn,DifferIn,longExit,DifferExit,atrDays,TradeCount,Winning,Losing,Final Value")
     # Run over everything
     thestrats = cerebro.run()
     thestrat = thestrats[0]

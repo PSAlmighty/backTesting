@@ -3,11 +3,11 @@ from __future__ import (absolute_import, division, print_function,
 import pandas as pd
 
 
-filename = "/home/leon/backTraderFolder/backTestFolder/backTesting/datas/test1Minnew.csv"
+filename = "/home/leon/backTraderFolder/backTestFolder/backTesting/datas/rbIndex.csv"
 org = pd.read_csv(filename,parse_dates=['datetime'])
 
-columns  = ["datetime","open","high","low","close","volume","openInterest"]
-
+columns  = ["datetime","open","high","low","close","volume"]
+#columns = ["datetime","open","close","high","low","volume"]
 org = org[columns]
 #org["hours"] = org["Datetime"].hour
 
