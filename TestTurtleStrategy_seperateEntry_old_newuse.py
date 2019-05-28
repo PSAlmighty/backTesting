@@ -4,10 +4,11 @@ from __future__ import (absolute_import, division, print_function,
 import datetime  # For datetime objects
 import os.path  # To manage paths
 import sys  # To find out the script name (in argv[0])
-
+import pandas as pd
 # Import the backtrader platform
 import backtrader as bt
-import pandas as pd
+import backtrader.analyzers as btanalyzers
+#from btreport.report import Cerebro
 
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
@@ -22,7 +23,7 @@ class TurtleStrategy01(bt.Strategy):
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
         dt = dt or self.datas[0].datetime.date(0)
-        #print('%s, %s' % (dt.isoformat(), txt))
+        print('%s, %s' % (dt.isoformat(), txt))
 
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
@@ -30,6 +31,7 @@ class TurtleStrategy01(bt.Strategy):
         self.tradeCount = 0
         self.winCount = 0
         self.loseCount = 0
+
         # To keep track of pending orders and buy price/commission
         self.order = None
         self.entryprice = None
@@ -43,21 +45,27 @@ class TurtleStrategy01(bt.Strategy):
         self.shortExit = None
         self.atrValue = None
         self.exitPrice = 0
+        
+        self.dayclose = self.datas[1]
+        self.dayclose.open = self.datas[1].open
+        self.dayclose.high = self.datas[1].close
+        self.dayclose.low = self.datas[1].close
+        self.dayclose.close = self.datas[1].close
         # Add a MovingAverageSimple indicator
-        self.longEntry = bt.indicators.Highest(self.datas[1],period=self.params.longIN)
+        self.longEntry = bt.indicators.Highest(self.dayclose,period=self.params.longIN)
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.datas[1],period=(self.params.longIN+self.params.differIN))
+            self.dayclose,period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
-            self.datas[1], period=self.params.longExit)
+            self.dayclose, period=self.params.longExit)
 
         self.shortExit = bt.indicators.Highest(
-            self.datas[1], period=(self.params.longExit+self.params.differExit))
+            self.dayclose, period=(self.params.longExit+self.params.differExit))
         
         
         self.atrValue = bt.indicators.ATR(
-            self.datas[1], period=self.params.atrDays, plot=False)
+            self.dayclose, period=self.params.atrDays, plot=False)
 
         '''
         # Indicators for the plotting show
@@ -80,28 +88,27 @@ class TurtleStrategy01(bt.Strategy):
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
-                #self.log(
-                #    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                #    (order.executed.price,
-                #     order.executed.value,
-                #     order.executed.comm))
+                self.log(
+                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
 
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
                 self.bar_executed = len(self)
             else:  # Sell
-                #self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                #         (order.executed.price,
-                #          order.executed.value,
-                #          order.executed.comm))
-                pass
+                self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                         (order.executed.price,
+                          order.executed.value,
+                          order.executed.comm))
+
             self.bar_executed = len(self)
             self.tradeCount += 1
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            
-            #self.log('Order Canceled/Margin/Rejected')
-            pass
+            self.log('Order Canceled/Margin/Rejected')
+
         # Write down: no pending order
         self.order = None
 
@@ -109,12 +116,13 @@ class TurtleStrategy01(bt.Strategy):
         if not trade.isclosed:
             return
 
-        #self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
-        #         (trade.pnl, trade.pnlcomm))
+        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
+                 (trade.pnl, trade.pnlcomm))
         if trade.pnl > 0:
             self.winCount += 1
         else:
             self.loseCount += 1
+
     def next(self):
 
         # Simply log the closing price of the series from the reference
@@ -131,8 +139,8 @@ class TurtleStrategy01(bt.Strategy):
             if self.dataclose[0] > self.longEntry[0]:
 
                 # BUY, BUY, BUY!!! (with all possible default parameters)
-                #self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                #self.log('Long Entry, %.2f' % self.longEntry[0])
+                self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                self.log('Long Entry, %.2f' % self.longEntry[0])
                 # Keep track of the created order to avoid a 2nd order
                 self.order = self.buy()
                 self.entryNo += 1
@@ -140,7 +148,7 @@ class TurtleStrategy01(bt.Strategy):
                 self.entryAtr = self.atrValue[0]
             
             elif self.dataclose[0] < self.shortEntry[0]:
-                #self.log('Short Create, %.2f'% self.dataclose[0])
+                self.log('Short Create, %.2f'% self.dataclose[0])
                 self.order =self.sell()
                 self.entryNo += 1
                 self.lastEntryPrice = self.dataclose[0]     
@@ -158,7 +166,7 @@ class TurtleStrategy01(bt.Strategy):
                 #self.log('Entry ATR, %.2f'% self.entryAtr)                                                      
                 if self.entryNo ==1 and self.lastEntryPrice >  0 \
                     and self.dataclose[0] > self.lastEntryPrice + self.entryAtr:
-                    #self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
     
                     # Keep track of the created order to avoid a 2nd order
                     self.order = self.buy()
@@ -167,7 +175,7 @@ class TurtleStrategy01(bt.Strategy):
                 elif self.entryNo ==2 and self.lastEntryPrice >  0 \
                     and self.dataclose[0] > self.lastEntryPrice + 0.5*self.entryAtr:
 
-                    #self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
     
                     # Keep track of the created order to avoid a 2nd order
                     self.order = self.buy()
@@ -185,7 +193,7 @@ class TurtleStrategy01(bt.Strategy):
                         self.exitPrice = self.shortExit[0]
                     if self.entryNo ==1 and self.lastEntryPrice >  0 \
                         and self.dataclose[0] < self.lastEntryPrice - self.entryAtr:
-                        #self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
         
                         # Keep track of the created order to avoid a 2nd order
                         self.order = self.sell()
@@ -194,7 +202,7 @@ class TurtleStrategy01(bt.Strategy):
                     elif self.entryNo ==2 and self.lastEntryPrice >  0 \
                         and self.dataclose[0] < self.lastEntryPrice - 0.5*self.entryAtr:
     
-                        #self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
         
                         # Keep track of the created order to avoid a 2nd order
                         self.order = self.sell()
@@ -212,23 +220,14 @@ class TurtleStrategy01(bt.Strategy):
 
 if __name__ == '__main__':
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6)
+    cerebro = bt.Cerebro()
+    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.005)
 
     # Add a strategy
-    #cerebro.addstrategy(TurtleStrategy01)   
-    
-    strats = cerebro.optstrategy(
-        TurtleStrategy01,
-        longIN=range(25, 28),
-        differIN=range(-1, 2),
-        longExit=range(12, 15),
-        differExit=range(-1, 2),
-        atrDays=20,  
-        atrNo=range(2, 3)                                            
-        )    
-    # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
-
+    cerebro.addstrategy(TurtleStrategy01)
+    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
+    cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+   
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -261,9 +260,9 @@ if __name__ == '__main__':
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019,4, 1),
+        todate=datetime.datetime(2009, 10, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)
+        compression=1)
     
 
     # Add the Data Feed to Cerebro
@@ -285,12 +284,16 @@ if __name__ == '__main__':
     # Print out the starting conditions
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
     print("LongIn,DifferIn,longExit,DifferExit,atrDays,TradeCount,Winning,Losing,Final Value")
-    
     # Run over everything
-    cerebro.run()
-
+    thestrats = cerebro.run()
+    thestrat = thestrats[0]
     # Print out the final result
-    #print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # Plot the result
-    #cerebro.plot(style='bar')
+    cerebro.plot(style='bar')
+    #cerebro.report('./outPDF')
+    print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
+    
+      

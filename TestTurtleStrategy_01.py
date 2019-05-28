@@ -13,10 +13,10 @@ import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('longIN',20 ),
-        ('differIN',1 ),
-        ('longExit',10 ),
-        ('differExit',1 ),
+        ('longIN',26 ),
+        ('differIN',-1 ),
+        ('longExit',13 ),
+        ('differExit',0 ),
         ('atrDays',20 ),
         ('atrNo',2)
     )
@@ -45,21 +45,28 @@ class TurtleStrategy01(bt.Strategy):
         self.shortExit = None
         self.atrValue = None
         self.exitPrice = 0
+        
+        self.dayclose = self.datas[1]
+        self.dayclose.open = self.datas[1].open
+        self.dayclose.high = self.datas[1].close
+        self.dayclose.low = self.datas[1].close
+        self.dayclose.close = self.datas[1].close            
+        
         # Add a MovingAverageSimple indicator
-        self.longEntry = bt.indicators.Highest(self.datas[1],period=self.params.longIN)
+        self.longEntry = bt.indicators.Highest(self.dayclose,period=self.params.longIN)
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.datas[1],period=(self.params.longIN+self.params.differIN))
+            self.dayclose,period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
-            self.datas[1], period=self.params.longExit)
+            self.dayclose, period=self.params.longExit)
 
         self.shortExit = bt.indicators.Highest(
-            self.datas[1], period=(self.params.longExit+self.params.differExit))
+            self.dayclose, period=(self.params.longExit+self.params.differExit))
         
         
         self.atrValue = bt.indicators.ATR(
-            self.datas[1], period=self.params.atrDays, plot=False)
+            self.dayclose, period=self.params.atrDays, plot=False)
 
         '''
         # Indicators for the plotting show
@@ -98,7 +105,7 @@ class TurtleStrategy01(bt.Strategy):
                           order.executed.comm))
 
             self.bar_executed = len(self)
-            self.tradeCount += 1
+            #self.tradeCount += 1
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             self.log('Order Canceled/Margin/Rejected')
@@ -116,7 +123,7 @@ class TurtleStrategy01(bt.Strategy):
             self.winCount += 1
         else:
             self.loseCount += 1
-
+        self.tradeCount += 1
     def next(self):
 
         # Simply log the closing price of the series from the reference
@@ -253,8 +260,8 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 01, 02),
-        todate=datetime.datetime(2009, 10, 01),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2008, 11, 1),
+        todate=datetime.datetime(2019, 12, 31),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)
     

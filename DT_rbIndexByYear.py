@@ -15,6 +15,7 @@ import pandas as pd
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
+        ('CandidateP', 1),
         ('ordersize', 2),
         ('k',4 ),
         ('differ',4 ),
@@ -32,20 +33,36 @@ class DTStrategy01(bt.Strategy):
         self.orderSize = self.params.ordersize
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
+        
+        self.k1P = 0
+        self.k2P = 0
+        self.rgP = 0
+        if self.params.CandidateP == 1:
+            self.k1P = 0.4
+            self.k2P = 0.4
+            self.rgP = 4
+        elif self.params.CandidateP == 2:
+            self.k1P = 0.6
+            self.k2P = 0.6
+            self.rgP = 4
+        else:
+            self.k1P = 0.4
+            self.k2P = 0.4
+            self.rgP = 5                        
         #self.date1 = self.datas[0].datetime.date
         #self.dayclose = self.datas[0].close
         #self.dayopen = self.datas[0].open
         #self.dayhigh = self.datas[0].high
         #self.daylow = self.datas[0].low        
-        self.rgHigh = bt.indicators.Highest(self.datas[1].high,period=self.params.rangeDays)
-        self.rgLow = bt.indicators.Lowest(self.datas[1].low,period=self.params.rangeDays)
-        self.closeHigh = bt.indicators.Highest(self.datas[1].close,period=self.params.rangeDays)    
-        self.closeLow = bt.indicators.Lowest(self.datas[1].close,period=self.params.rangeDays)
+        self.rgHigh = bt.indicators.Highest(self.datas[1].high,period=self.rgP)
+        self.rgLow = bt.indicators.Lowest(self.datas[1].low,period=self.rgP)
+        self.closeHigh = bt.indicators.Highest(self.datas[1].close,period=self.rgP)    
+        self.closeLow = bt.indicators.Lowest(self.datas[1].close,period=self.rgP)
         
         self.range1 = abs(self.rgHigh - self.closeLow)
         self.range2 = abs(self.closeHigh-self.rgLow)
-        self.theK1 = self.params.k/10
-        self.theK2 = (self.params.k+ self.params.differ)/10
+        self.theK1 = self.k1P
+        self.theK2 = self.k2P = 0.6
         
 
                     
@@ -200,8 +217,8 @@ class DTStrategy01(bt.Strategy):
         else:
             pass              
     def stop(self):
-        print('%.2f,%.2f,%.2f,%.2f,,%2d,%2d,%.2f' %
-                 (self.params.k,self.params.differ,self.params.rangeDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
+        print('%.2f,%.2f,,%2d,%2d,%.2f' %
+                 (self.params.CandidateP, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
 
 
 if __name__ == '__main__':
@@ -211,9 +228,10 @@ if __name__ == '__main__':
     strats = cerebro.optstrategy(
         DTStrategy01,
         ordersize = 2,
-        k=range(1,20 ,1), 
-        differ=range(-2,3 ,1), 
-        rangeDays =range(2, 12,1))    
+        CandidateP = range(1,4),
+        k=40, 
+        differ=0, 
+        rangeDays =4)    
     # Set the commission
     cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)

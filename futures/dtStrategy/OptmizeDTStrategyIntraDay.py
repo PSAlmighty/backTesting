@@ -15,7 +15,7 @@ import pandas as pd
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
-        ('ordersize', 2),
+        ('ordersize', 1),
         ('k',4 ),
         ('differ',4 ),
         ('rangeDays',4 )
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/rbindex.csv')
+    datapath = os.path.join(modpath, '../../datas/Iindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -256,7 +256,7 @@ if __name__ == '__main__':
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
         todate=datetime.datetime(2019, 3, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=5)
+        compression=10)
     
 
     # Add the Data Feed to Cerebro
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(15000.0)
+    cerebro.broker.setcash(100000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)

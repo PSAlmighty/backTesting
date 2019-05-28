@@ -26,8 +26,10 @@ class TurtleStrategy01(bt.Strategy):
 
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
+      
         self.dataclose = self.datas[0].close
         self.tradeCount = 0
+        #self.tradeCount += 1
         self.winCount = 0
         self.loseCount = 0
         # To keep track of pending orders and buy price/commission
@@ -44,20 +46,28 @@ class TurtleStrategy01(bt.Strategy):
         self.atrValue = None
         self.exitPrice = 0
         # Add a MovingAverageSimple indicator
-        self.longEntry = bt.indicators.Highest(self.datas[1],period=self.params.longIN)
+        if self.params.longIN < self.params.longExit + 4:
+            return          
+        self.dayclose = self.datas[1]
+        self.dayclose.open = self.datas[1].open
+        self.dayclose.high = self.datas[1].close
+        self.dayclose.low = self.datas[1].close
+        self.dayclose.close = self.datas[1].close          
+        
+        self.longEntry = bt.indicators.Highest(self.dayclose,period=self.params.longIN)
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.datas[1],period=(self.params.longIN+self.params.differIN))
+            self.dayclose,period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
-            self.datas[1], period=self.params.longExit)
+            self.dayclose, period=self.params.longExit)
 
         self.shortExit = bt.indicators.Highest(
-            self.datas[1], period=(self.params.longExit+self.params.differExit))
+            self.dayclose, period=(self.params.longExit+self.params.differExit))
         
         
         self.atrValue = bt.indicators.ATR(
-            self.datas[1], period=self.params.atrDays, plot=False)
+            self.dayclose, period=self.params.atrDays, plot=False)
 
         '''
         # Indicators for the plotting show
@@ -96,7 +106,7 @@ class TurtleStrategy01(bt.Strategy):
                 #          order.executed.comm))
                 pass
             self.bar_executed = len(self)
-            self.tradeCount += 1
+            
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             
@@ -115,8 +125,10 @@ class TurtleStrategy01(bt.Strategy):
             self.winCount += 1
         else:
             self.loseCount += 1
+        self.tradeCount += 1    
     def next(self):
-
+        if self.params.longIN < self.params.longExit + 4:
+            return
         # Simply log the closing price of the series from the reference
         #self.log('Close, %.2f' % self.dataclose[0])
 
@@ -216,23 +228,24 @@ if __name__ == '__main__':
 
     # Add a strategy
     #cerebro.addstrategy(TurtleStrategy01)   
-    
+     
     strats = cerebro.optstrategy(
         TurtleStrategy01,
-        longIN=range(25, 28),
-        differIN=range(-1, 2),
-        longExit=range(12, 15),
+        longIN=range(13, 56),
+        differIN=range(-2, 3),
+        longExit=range(8, 28),
         differExit=range(-1, 2),
         atrDays=20,  
         atrNo=range(2, 3)                                            
-        )    
+        ) 
+    
     # Set the commission
     cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/rbindex.csv')
+    datapath = os.path.join(modpath, '../../datas/ALindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -263,19 +276,21 @@ if __name__ == '__main__':
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
         todate=datetime.datetime(2019,4, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)
-    
-
+        compression=10)  
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
+
+
+    # Add the Data Feed to Cerebro
+    #cerebro.resampledata(data,timeframe=bt.TimeFrame.Minutes,compression=10)
 
     cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(50000.0)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=2)
+    cerebro.broker.setcash(200000.0)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
 

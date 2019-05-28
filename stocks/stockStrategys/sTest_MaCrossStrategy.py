@@ -10,15 +10,17 @@ import backtrader as bt
 import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
+
 #from btreport.report import Cerebro
 
 # Create a Stratey
-class DTStrategy01(bt.Strategy):
+class sMaCrossStrategy(bt.Strategy):
     params = (
-        ('ordersize', 2),
-        ('k',4 ),
-        ('differ',4 ),
-        ('rangeDays',4 )
+        ('ordersize', 10000),
+        ('p1',50 ),
+        ('p2',200 ),
+        ('pfilter',60 ),
+        ('p4',200)
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -26,34 +28,30 @@ class DTStrategy01(bt.Strategy):
         print('%s, %s' % (dt.isoformat(), txt))
 
     def __init__(self):
+        print('P1,P2,P3,Final Value')
         self.tradeCount = 0
         self.winCount = 0
-        self.loseCount = 0                
+        self.loseCount = 0        
         self.orderSize = self.params.ordersize
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
-        #self.date1 = self.datas[0].datetime.date
-        #self.dayclose = self.datas[0].close
-        #self.dayopen = self.datas[0].open
-        #self.dayhigh = self.datas[0].high
-        #self.daylow = self.datas[0].low        
-        self.rgHigh = bt.indicators.Highest(self.datas[1].high,period=self.params.rangeDays)
-        self.rgLow = bt.indicators.Lowest(self.datas[1].low,period=self.params.rangeDays)
-        self.closeHigh = bt.indicators.Highest(self.datas[1].close,period=self.params.rangeDays)    
-        self.closeLow = bt.indicators.Lowest(self.datas[1].close,period=self.params.rangeDays)
+        #self.dayclose  = self.datas[1].close
         
-        self.range1 = abs(self.rgHigh - self.closeLow)
-        self.range2 = abs(self.closeHigh-self.rgLow)
-        self.theK1 = self.params.k/10
-        self.theK2 = (self.params.k+ self.params.differ)/10
-        
-
-                    
+        self.ma1 = bt.indicators.SimpleMovingAverage(self.datas[1], period=self.params.p1)
+        self.ma2 = bt.indicators.SimpleMovingAverage(self.datas[1], period=self.params.p2)
+        self.ma_filter = bt.indicators.SimpleMovingAverage(self.datas[2], period=self.params.pfilter)
+        self.ma4 = bt.indicators.SimpleMovingAverage(self.datas[2], period=self.params.p4)
+        #bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
+                                                                   
         # To keep track of pending orders and buy price/commission
         self.order = None
         self.entryprice = None
         self.buycomm = None
         self.todayOpen = 0
+        
+        self.openFlag = False
+        self.exitFlag = False
+        
         '''
         # Indicators for the plotting show
         bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
@@ -75,28 +73,26 @@ class DTStrategy01(bt.Strategy):
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
-                ####self.log(
-                ####    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                ####    (order.executed.price,
-                ####     order.executed.value,
-                ####     order.executed.comm))
+                self.log(
+                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
 
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
                 self.bar_executed = len(self)
             else:  # Sell
-                ####self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                ####         (order.executed.price,
-                ####          order.executed.value,
-                ####          order.executed.comm))
-                pass
+                self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                         (order.executed.price,
+                          order.executed.value,
+                          order.executed.comm))
 
             self.bar_executed = len(self)
             self.tradeCount += 1
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            ####self.log('Order Canceled/Margin/Rejected')
-            pass
+            self.log('Order Canceled/Margin/Rejected')
 
         # Write down: no pending order
         self.order = None
@@ -105,8 +101,8 @@ class DTStrategy01(bt.Strategy):
         if not trade.isclosed:
             return
 
-        ####self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
-        ####         (trade.pnl, trade.pnlcomm))
+        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
+                 (trade.pnl, trade.pnlcomm))
         if trade.pnl > 0:
             self.winCount += 1
         else:
@@ -128,111 +124,77 @@ class DTStrategy01(bt.Strategy):
         
         if self.todayOpen == 0:
             return
-           
-        self.longIn = 0
-        self.shortIn = 0
-        self.theRange = 0
-        if self.range1[0] > self.range2[0]:
-            self.theRange = self.range1[0]
+        self.openFlag = False   
+        self.exitFlag = False
+        if self.ma1[0] > self.ma2[0] :
+            #self.exitFlag = False
+            if self.dataclose[0] > self.ma_filter[0] and self.dataclose[0] > self.ma1[0] and self.dataclose[0] > self.ma4[0]:
+                self.openFlag = True
+            else:
+                self.openFlag = False
+                
         else:
-            self.theRange = self.range2[0]
-            
+            self.exitFlag = True
+            self.openFlag = False
         
-        self.longIn  = self.todayOpen + self.theK1*self.theRange
-        self.shortIn = self.todayOpen - self.theK2*self.theRange
-        
-        '''
-        if len(self)%200 == 0:
-            print(self.rgHigh[0],self.rgHigh[-1],self.rgHigh[-2],self.rgHigh[-3])
-            print(self.closeLow[0],self.closeLow[-1],self.closeLow[-2],self.closeLow[-3])            
-            print(self.range1[0],self.range1[-1],self.range1[-2],self.range1[-3])         
-        '''
+        #print( self.openFlag,self.exitFlag)
         # Check if we are in the market
         if not self.position:
-            if len(self)%300 == 0:
-                pass
-                ####print('no position')            
-            # Not yet ... we MIGHT BUY if ...
-            if self.dataclose[0] > self.longIn:
 
+            if self.openFlag:
+                self.log('position, %.2f' % self.position.size)
                 # BUY, BUY, BUY!!! (with all possible default parameters)
-                ####self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.order_target_size(target=self.orderSize)
-
-            
-            elif self.dataclose[0] < self.shortIn:
-                ####self.log('Short Create, %.2f'% self.dataclose[0])
-                self.order =self.order_target_size(target=-1*self.orderSize)         
+                #self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.order_target_percent( target= 0.8)
             
         elif self.position.size > 0 :
-            if len(self)%300 == 0:
-                pass
-                #print("long")
-                #print(self.getposition())
 
-            #self.log('Exit Entry, %.2f'% self.exitPrice) 
-            #self.log('Long Exit, %.2f'% self.longExit[0])                 
-            #self.log('Last Entry, %.2f'% self.lastEntryPrice)
-            #self.log('Entry ATR, %.2f'% self.entryAtr)                                                      
-            if self.dataclose[0] < self.shortIn:
-                ####self.log('Cover CREATE, %.2f' % ( self.dataclose[0]))
+            if self.exitFlag:
+                self.log('position, %.2f' % self.position.size)
+                self.log('Cover CREATE, %.2f' % ( self.dataclose[0]))
 
                 # Keep track of the created order to avoid a 2nd order
                 #self.order = self.close(price=self.datalow[0] < self.shortIn)
-                self.order = self.order_target_size(target=-1*self.orderSize)
+                self.order = self.order_target_size(target=0)
                 #self.order_target_size(size )               
             else:
                 pass
 
         elif self.position.size < 0 :
-            if len(self)%300 == 0:
-                pass
-                #print('short')
-                #print(self.getposition())
-                
-            if self.dataclose[0] > self.longIn:
-                ####self.log('Buy CREATE, %.2f' % (self.dataclose[0]))
-                self.order = self.order_target_size(target=self.orderSize)
-       
-            else:
-                pass
+            pass
         else:
             pass              
     def stop(self):
-        print('%.2f,%.2f,%.2f,%.2f,,%2d,%2d,%.2f' %
-                 (self.params.k,self.params.differ,self.params.rangeDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
+        print('%.2f,%.2f,%.2f,%.2f,%2d,%2d,%.2f' %
+                 (self.params.p1,self.params.p2,self.params.pfilter, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
+
 
 
 if __name__ == '__main__':
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6)
+    cerebro = bt.Cerebro()
     
-    strats = cerebro.optstrategy(
-        DTStrategy01,
-        ordersize = 2,
-        k=range(1,20 ,1), 
-        differ=range(-2,3 ,1), 
-        rangeDays =range(2, 12,1))    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
+    cerebro.broker.setcommission(commission=0.001)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
-    #cerebro.addstrategy(DTStrategy01)
+    cerebro.addstrategy(sMaCrossStrategy)
     #cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
    
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/rbindex.csv')
+    datapath = os.path.join(modpath, '../datas/002049.XSHE.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
     
 
     
-    #print(datapath)
+    print(datapath)
     # Create a Data Feed
     
     '''
@@ -253,21 +215,21 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019, 3, 1),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2015, 11, 1),
+        todate=datetime.datetime(2019, 5, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=5)
+        compression=1)
     
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
-
+    cerebro.resampledata(data,timeframe=bt.TimeFrame.Minutes,compression=60)
     cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(15000.0)
+    cerebro.broker.setcash(100000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -280,12 +242,12 @@ if __name__ == '__main__':
     print('P1,P2,P3,TradeCount,Winning,Losing,Final Value')
     # Run over everything
     thestrats = cerebro.run()
-    #thestrat = thestrats[0]
+    thestrat = thestrats[0]
     # Print out the final result
-    #print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # Plot the result
-    #cerebro.plot(style='bar')
+    cerebro.plot(style='bar')
     #cerebro.report('./outPDF')
     #print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
     #print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 

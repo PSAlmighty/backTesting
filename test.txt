@@ -1,0 +1,32 @@
+ Volume in drive C is OSDisk
+ Volume Serial Number is 644B-0B3A
+
+ Directory of C:\Trade\backtest_studio\backTesting
+
+04/04/2019  03:41 PM    <DIR>          .
+04/04/2019  03:41 PM    <DIR>          ..
+04/04/2019  03:21 PM               382 .project
+04/04/2019  03:21 PM               315 .pydevproject
+04/04/2019  03:21 PM               105 .pydevproject.bak
+04/04/2019  03:13 PM    <DIR>          btreport
+04/04/2019  03:14 PM    <DIR>          datas
+03/26/2019  09:15 PM           135,203 dtresult.txt
+02/26/2019  03:01 PM             4,847 helloOptimize.py
+02/26/2019  02:55 PM             5,307 helloWorld.py
+03/13/2019  02:31 PM             4,987 helloWorld_02.py
+03/12/2019  02:43 PM               921 modifyTXday.py
+03/12/2019  02:44 PM        49,952,441 opt.csv
+04/04/2019  03:37 PM            10,774 OptmizeDTStrategyIntraDay.py
+03/27/2019  02:45 PM            11,504 OptmizeTurtleStrategy01.py
+03/06/2019  01:17 PM    <DIR>          outPDF
+04/04/2019  03:41 PM                 0 test.txt
+03/27/2019  02:39 PM            10,435 TestDTStrategyIntraDay.py
+03/13/2019  06:13 PM             6,043 TestDTStrategyIntraDay.pyc
+03/15/2019  06:03 PM            10,848 TestKeltnerStrategy01.py
+03/27/2019  03:30 PM             3,344 testOptimizerAnalyzer01.py
+03/02/2019  09:50 PM             3,366 testTimeFrame.py
+03/10/2019  09:17 PM            11,137 TestTurtleStrategyDaychart01.py
+03/27/2019  02:44 PM            11,544 TestTurtleStrategy_01.py
+03/13/2019  06:04 PM             8,974 tetsSize.py
+              20 File(s)     50,192,477 bytes
+               5 Dir(s)   8,403,226,624 bytes free
