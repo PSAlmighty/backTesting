@@ -11,7 +11,7 @@ import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
 
-#from btreport.report import Cerebro
+#from btreport.report import Cerebro  
 
 # Create a Stratey
 class waveTestStrategy(bt.Strategy):

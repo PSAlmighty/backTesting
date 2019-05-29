@@ -231,12 +231,12 @@ if __name__ == '__main__':
      
     strats = cerebro.optstrategy(
         TurtleStrategy01,
-        longIN=range(13, 56),
-        differIN=range(-2, 3),
-        longExit=range(8, 28),
-        differExit=range(-1, 2),
+        longIN=26,
+        differIN=-1,
+        longExit=13,
+        differExit=0,
         atrDays=20,  
-        atrNo=range(2, 3)                                            
+        atrNo=2                                            
         ) 
     
     # Set the commission
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/APindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/rbindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -289,7 +289,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(200000.0)
+    cerebro.broker.setcash(900000.0)
     cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)

@@ -5,7 +5,7 @@ Created on May 7, 2019
 '''
 import pandas as pd
 import sys
-sb='AL'
+sb='AP'
 df = pd.read_csv("./ps_data/"+sb+"index.csv" ,index_col='datetime',parse_dates=True)
 #df = df.reset_index(drop=True)
 #df = df.set_index('datetime', drop = True)

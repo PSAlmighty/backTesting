@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
 import pandas as pd
 import sys
 
-sb = 'AL'
+sb = 'AP'
 
 filename = "./dl_data/"+sb+"index.csv"
 org = pd.read_csv(filename,parse_dates=['datetime'])
