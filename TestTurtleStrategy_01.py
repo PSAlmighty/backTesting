@@ -13,9 +13,9 @@ import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('longIN',26 ),
-        ('differIN',-1 ),
-        ('longExit',13 ),
+        ('longIN',20 ),
+        ('differIN',0 ),
+        ('longExit',10 ),
         ('differExit',0 ),
         ('atrDays',20 ),
         ('atrNo',2)
@@ -222,7 +222,7 @@ class TurtleStrategy01(bt.Strategy):
 if __name__ == '__main__':
     # Create a cerebro entity
     cerebro = bt.Cerebro()
-    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.005)
+    cerebro.broker.setcommission(leverage=1,mult =5,commission=0.005)
 
     # Add a strategy
     cerebro.addstrategy(TurtleStrategy01)
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/rbindex.csv')
+    datapath = os.path.join(modpath, './datas/CFindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -260,10 +260,10 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2008, 11, 1),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 1),
         todate=datetime.datetime(2019, 12, 31),
         timeframe= bt.TimeFrame.Minutes,
-        compression=1)
+        compression=10)
     
 
     # Add the Data Feed to Cerebro
@@ -274,7 +274,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(50000.0)
+    cerebro.broker.setcash(200000.0)
     cerebro.addsizer(bt.sizers.FixedSize, stake=2)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -292,7 +292,7 @@ if __name__ == '__main__':
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # Plot the result
-    cerebro.plot(style='bar')
+    #cerebro.plot(style='bar')
     #cerebro.report('./outPDF')
     print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
     print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 

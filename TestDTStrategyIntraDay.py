@@ -15,10 +15,10 @@ import pandas as pd
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
-        ('ordersize', 2),
-        ('k',0.4 ),
-        ('differ',0.1 ),
-        ('rangeDays',4 )
+        ('ordersize', 1),
+        ('k',0.6 ),
+        ('differ',0 ),
+        ('rangeDays',6 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     cerebro = bt.Cerebro()
     
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.005)
+    cerebro.broker.setcommission(leverage=1,mult =5,commission=0.002)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     cerebro.addstrategy(DTStrategy01)
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, './datas/rbindex.csv')
+    datapath = os.path.join(modpath, './datas/SMindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -244,10 +244,10 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 01, 02),
-        todate=datetime.datetime(2009, 06, 01),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
+        todate=datetime.datetime(2019, 6, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=1)
+        compression=10)
     
 
     # Add the Data Feed to Cerebro
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(15000.0)
+    cerebro.broker.setcash(150000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)

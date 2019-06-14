@@ -12,10 +12,10 @@ import pandas as pd
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('longIN',20 ),
-        ('differIN',1 ),
-        ('longExit',10 ),
-        ('differExit',1 ),
+        ('longIN',26 ),
+        ('differIN',0 ),
+        ('longExit',13 ),
+        ('differExit',0 ),
         ('atrDays',20 ),
         ('atrNo',2)
     )
@@ -50,8 +50,8 @@ class TurtleStrategy01(bt.Strategy):
             return          
         self.dayclose = self.datas[1]
         self.dayclose.open = self.datas[1].open
-        self.dayclose.high = self.datas[1].close
-        self.dayclose.low = self.datas[1].close
+        self.dayclose.high = self.datas[1].high
+        self.dayclose.low = self.datas[1].low
         self.dayclose.close = self.datas[1].close          
         
         self.longEntry = bt.indicators.Highest(self.dayclose,period=self.params.longIN)
@@ -231,12 +231,12 @@ if __name__ == '__main__':
      
     strats = cerebro.optstrategy(
         TurtleStrategy01,
-        longIN=range(20, 28,2),
-        differIN=range(-2, 3),
-        longExit=range(10, 14),
-        differExit=range(-1, 2),
+        longIN=20,
+        differIN=0,
+        longExit=10,
+        differExit=0,
         atrDays=20,  
-        atrNo=range(2, 3)                                            
+        atrNo=2                                            
         ) 
     
     # Set the commission
@@ -273,8 +273,8 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019,4, 1),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2017, 1, 1),
+        todate=datetime.datetime(2018,1, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=10)  
     # Add the Data Feed to Cerebro
@@ -289,7 +289,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(200000.0)
+    cerebro.broker.setcash(900000.0)
     cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)

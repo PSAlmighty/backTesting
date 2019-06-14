@@ -211,11 +211,11 @@ if __name__ == '__main__':
     strats = cerebro.optstrategy(
         DTStrategy01,
         ordersize = 2,
-        k=range(1,20 ,1), 
-        differ=range(-2,3 ,1), 
-        rangeDays =range(2, 12,1))    
+        k=5, 
+        differ=0, 
+        rangeDays =5)    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =60,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/APindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/HCindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
