@@ -8,13 +8,13 @@ import sys  # To find out the script name (in argv[0])
 # Import the backtrader platform
 import backtrader as bt
 import pandas as pd
-
+import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('longIN',26 ),
+        ('longIN',20 ),
         ('differIN',0 ),
-        ('longExit',13 ),
+        ('longExit',10 ),
         ('differExit',0 ),
         ('atrDays',20 ),
         ('atrNo',2)
@@ -229,15 +229,9 @@ if __name__ == '__main__':
     # Add a strategy
     #cerebro.addstrategy(TurtleStrategy01)   
      
-    strats = cerebro.optstrategy(
-        TurtleStrategy01,
-        longIN=20,
-        differIN=0,
-        longExit=10,
-        differExit=0,
-        atrDays=20,  
-        atrNo=2                                            
-        ) 
+    cerebro.addstrategy(TurtleStrategy01)
+    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
+    cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
     
     # Set the commission
     cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
@@ -273,8 +267,8 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2017, 1, 1),
-        todate=datetime.datetime(2018,1, 1),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 1),
+        todate=datetime.datetime(2019,1, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=10)  
     # Add the Data Feed to Cerebro
@@ -289,7 +283,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(900000.0)
+    cerebro.broker.setcash(100000.0)
     cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -302,10 +296,13 @@ if __name__ == '__main__':
     print("LongIn,DifferIn,longExit,DifferExit,atrDays,TradeCount,Winning,Losing,Final Value")
     
     # Run over everything
-    cerebro.run()
-
+    thestrats = cerebro.run()
+    thestrat = thestrats[0]
     # Print out the final result
-    #print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
     # Plot the result
     #cerebro.plot(style='bar')
+    #cerebro.report('./outPDF')
+    print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
+   

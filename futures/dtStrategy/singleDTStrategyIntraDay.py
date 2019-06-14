@@ -207,15 +207,12 @@ class DTStrategy01(bt.Strategy):
 if __name__ == '__main__':
     # Create a cerebro entity
     cerebro = bt.Cerebro(maxcpus=6)
-    
-    strats = cerebro.optstrategy(
-        DTStrategy01,
-        ordersize = 2,
-        k=5, 
-        differ=0, 
-        rangeDays =5)    
+        
+    cerebro.addstrategy(DTStrategy01)
+    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
+    cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =100,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -225,7 +222,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/HCindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/Jindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -267,7 +264,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(100000.0)
+    cerebro.broker.setcash(200000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -280,14 +277,13 @@ if __name__ == '__main__':
     print('P1,P2,P3,TradeCount,Winning,Losing,Final Value')
     # Run over everything
     thestrats = cerebro.run()
-    #thestrat = thestrats[0]
+    thestrat = thestrats[0]
     # Print out the final result
-    #print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+
 
     # Plot the result
     #cerebro.plot(style='bar')
     #cerebro.report('./outPDF')
-    #print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
-    #print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
-    
+    print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
       
