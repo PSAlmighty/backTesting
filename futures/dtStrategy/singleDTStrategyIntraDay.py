@@ -10,15 +10,15 @@ import backtrader as bt
 import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
-#from btreport.report import Cerebro
+import backtrader.analyzers as btanalyzers
 
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
         ('ordersize', 1),
-        ('k',4 ),
-        ('differ',4 ),
-        ('rangeDays',4 )
+        ('k',3 ),
+        ('differ',1 ),
+        ('rangeDays',6 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -129,6 +129,7 @@ class DTStrategy01(bt.Strategy):
         if self.todayOpen == 0:
             return
            
+        #print(self.todayOpen)
         self.longIn = 0
         self.shortIn = 0
         self.theRange = 0
@@ -212,7 +213,7 @@ if __name__ == '__main__':
     cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =100,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =10000,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -222,7 +223,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/Jindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/Tindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -249,11 +250,12 @@ if __name__ == '__main__':
     '''
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
+    p0 = p0.dropna()
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019, 3, 1),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2015, 1, 2),
+        todate=datetime.datetime(2016, 3, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)
+        compression=1)
     
 
     # Add the Data Feed to Cerebro
@@ -264,7 +266,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(200000.0)
+    cerebro.broker.setcash(300000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -276,14 +278,38 @@ if __name__ == '__main__':
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
     print('P1,P2,P3,TradeCount,Winning,Losing,Final Value')
     # Run over everything
+    # Run over everything
+    cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
+    #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+    cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
+    cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
+    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
+    cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')
     thestrats = cerebro.run()
     thestrat = thestrats[0]
     # Print out the final result
 
-
     # Plot the result
     #cerebro.plot(style='bar')
     #cerebro.report('./outPDF')
-    print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
-    print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
-      
+    print('VWR:', thestrat.analyzers.vwr.get_analysis()) 
+    print('logreturn:',  thestrat.analyzers.logreturn.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.SQN.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.TradeAnalyzer.get_analysis()) 
+    tempDict=thestrat.analyzers.TXs.get_analysis()
+    orderList = []
+    
+    for key in tempDict:
+        #print(tempDict[key])
+        #sys.exit(0)
+        line = [key,tempDict[key][0][0],tempDict[key][0][1]]
+        orderList.append(line )
+    
+    print(orderList)    
+    dt = [i[0] for i in orderList]
+    position = [i[1] for i in orderList]
+    price = [i[2] for i in orderList]
+    tempDict = {'Datetime':dt,'Position':position,'price':price}
+    cntDF = pd.DataFrame(tempDict)     
+    cntDF.to_csv("./tempOut/orders.csv")
+    #print(cntDF  )       

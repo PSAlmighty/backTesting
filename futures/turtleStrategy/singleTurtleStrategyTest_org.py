@@ -12,7 +12,7 @@ import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('longIN',20 ),
+        ('longIN',20  ),
         ('differIN',0 ),
         ('longExit',10 ),
         ('differExit',0 ),
@@ -49,25 +49,25 @@ class TurtleStrategy01(bt.Strategy):
         if self.params.longIN < self.params.longExit + 4:
             return          
         self.dayclose = self.datas[1]
-        self.dayclose.open = self.datas[1].open
-        self.dayclose.high = self.datas[1].high
-        self.dayclose.low = self.datas[1].low
-        self.dayclose.close = self.datas[1].close          
+        #self.dayclose.open = self.datas[1].open
+        #self.dayclose.high = self.datas[1].high
+        #self.dayclose.low = self.datas[1].low
+        #self.dayclose.close = self.datas[1].close          
         
-        self.longEntry = bt.indicators.Highest(self.dayclose,period=self.params.longIN)
+        self.longEntry = bt.indicators.Highest(self.datas[1],period=self.params.longIN)
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.dayclose,period=(self.params.longIN+self.params.differIN))
+            self.datas[1],period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
-            self.dayclose, period=self.params.longExit)
+            self.datas[1], period=self.params.longExit)
 
         self.shortExit = bt.indicators.Highest(
-            self.dayclose, period=(self.params.longExit+self.params.differExit))
+            self.datas[1], period=(self.params.longExit+self.params.differExit))
         
         
         self.atrValue = bt.indicators.ATR(
-            self.dayclose, period=self.params.atrDays, plot=False)
+            self.datas[1], period=self.params.atrDays, plot=False)
 
         '''
         # Indicators for the plotting show
@@ -141,6 +141,7 @@ class TurtleStrategy01(bt.Strategy):
             self.entryNo = 0 
             # Not yet ... we MIGHT BUY if ...
             if self.dataclose[0] > self.longEntry[0]:
+                print(self.atrValue[0])
 
                 # BUY, BUY, BUY!!! (with all possible default parameters)
                 #self.log('BUY CREATE, %.2f' % self.dataclose[0])
@@ -232,6 +233,7 @@ if __name__ == '__main__':
     cerebro.addstrategy(TurtleStrategy01)
     cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+    cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')
     
     # Set the commission
     cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
@@ -239,8 +241,9 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/RBindex_10m.csv')
-
+    #datapath = os.path.join(modpath, '../../datas/RBindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/rbindex.csv')
+    
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
     
@@ -270,7 +273,7 @@ if __name__ == '__main__':
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 1),
         todate=datetime.datetime(2019,1, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)  
+        compression=1)  
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
 
@@ -292,9 +295,12 @@ if __name__ == '__main__':
     #cerebro.broker.setcommission(commission=0.0)
 
     # Print out the starting conditions
-    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    print("LongIn,DifferIn,longExit,DifferExit,atrDays,TradeCount,Winning,Losing,Final Value")
-    
+    cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
+    #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+    cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
+    cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
+    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
+    cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')  
     # Run over everything
     thestrats = cerebro.run()
     thestrat = thestrats[0]
@@ -303,6 +309,24 @@ if __name__ == '__main__':
     # Plot the result
     #cerebro.plot(style='bar')
     #cerebro.report('./outPDF')
-    print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
-    print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
-   
+    print('VWR:', thestrat.analyzers.vwr.get_analysis()) 
+    print('logreturn:',  thestrat.analyzers.logreturn.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.SQN.get_analysis()) 
+    print('Anual Ratio:',  thestrat.analyzers.TradeAnalyzer.get_analysis()) 
+    tempDict=thestrat.analyzers.TXs.get_analysis()
+    orderList = []
+    
+    for key in tempDict:
+        #print(tempDict[key])
+        #sys.exit(0)
+        line = [key,tempDict[key][0][0],tempDict[key][0][1]]
+        orderList.append(line )
+    
+    print(orderList)    
+    dt = [i[0] for i in orderList]
+    position = [i[1] for i in orderList]
+    price = [i[2] for i in orderList]
+    tempDict = {'Datetime':dt,'Position':position,'price':price}
+    cntDF = pd.DataFrame(tempDict)     
+    cntDF.to_csv("./tempOut/orders.csv")
+    #print(cntDF  )           

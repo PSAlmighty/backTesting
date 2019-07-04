@@ -10,6 +10,7 @@ import backtrader as bt
 import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
+import backtrader.analyzers as btanalyzers
 #from btreport.report import Cerebro
 
 # Create a Stratey
@@ -206,16 +207,17 @@ class DTStrategy01(bt.Strategy):
 
 if __name__ == '__main__':
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6)
+    cerebro = bt.Cerebro(maxcpus=6,optreturn=False,stdstats=False)
     
     strats = cerebro.optstrategy(
         DTStrategy01,
-        ordersize = 2,
+        ordersize = 1,
         k=range(1,20 ,1), 
         differ=range(-2,3 ,1), 
-        rangeDays =range(2, 12,1))    
+        rangeDays =range(2, 12,1)
+        )    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =60,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =10000,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -225,7 +227,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/APindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/Tindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -253,10 +255,11 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
+    p0 = p0.dropna()
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
         todate=datetime.datetime(2019, 3, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)
+        compression=1)
     
 
     # Add the Data Feed to Cerebro
@@ -267,7 +270,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(100000.0)
+    cerebro.broker.setcash(300000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -278,16 +281,67 @@ if __name__ == '__main__':
     # Print out the starting conditions
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
     print('P1,P2,P3,TradeCount,Winning,Losing,Final Value')
+
+    cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
+    #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+    cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
+    cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
+    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')
+    cerebro.addanalyzer(btanalyzers.DrawDown, _name='Drawdown')
+    cerebro.addanalyzer(btanalyzers.TimeDrawDown, _name='TimeDrawdown',timeframe=bt.TimeFrame.Days)
+    
     # Run over everything
-    thestrats = cerebro.run()
+    opt_runs = cerebro.run()
     #thestrat = thestrats[0]
     # Print out the final result
     #print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-    # Plot the result
-    #cerebro.plot(style='bar')
-    #cerebro.report('./outPDF')
-    #print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis()) 
-    #print('Anual Ratio:',  thestrat.analyzers.annual.get_analysis()) 
-    
-      
+    final_results_list = []
+    ttt = 1
+    for run in opt_runs:
+        for strategy in run:
+            #value = round(strategy.broker.get_value(),2)
+            #PnL = round(value - startcash,2)
+            dtk = strategy.params.k
+            dtdiffer = strategy.params.differ
+            dtrangeDays = strategy.params.rangeDays
+
+            rvwr = strategy.analyzers.vwr.get_analysis()
+            rsqn = strategy.analyzers.SQN.get_analysis()
+            rlogreturn = strategy.analyzers.logreturn.get_analysis()
+            rTradeAnalyzer = strategy.analyzers.TradeAnalyzer.get_analysis()
+            if (len(rTradeAnalyzer) < 3):
+                continue
+            netpnl = rTradeAnalyzer["pnl"]["net"]["total"]
+            avgpnl = rTradeAnalyzer["pnl"]["net"]["average"]
+            tcnt = rTradeAnalyzer["total"]["total"]
+            if tcnt == 0:
+                continue
+            won = rTradeAnalyzer["won"]["total"]
+            lost = rTradeAnalyzer["lost"]["total"]
+            
+
+            wlr = float(won/(won+lost))
+            if abs(rTradeAnalyzer['lost']['pnl']['total']) <0.001:
+                plr = 0
+            else:
+                plr = abs( rTradeAnalyzer['won']['pnl']['total'])/abs(rTradeAnalyzer['lost']['pnl']['total'])
+            profitfactor = wlr*plr/(1-wlr)
+            
+            longavg = rTradeAnalyzer["long"]["pnl"]["average"]
+            shortavg = rTradeAnalyzer["short"]["pnl"]["average"]
+            ddAna = strategy.analyzers.Drawdown.get_analysis()
+
+            tmAna = strategy.analyzers.TimeDrawdown.get_analysis() 
+
+            maxDD = ddAna["max"]["drawdown"]
+            
+            tmDD = tmAna["maxdrawdownperiod"]
+            
+
+            final_results_list.append([dtk,dtdiffer,dtrangeDays,netpnl,avgpnl,tcnt,profitfactor,won,lost,longavg,shortavg,rvwr["vwr"],rsqn["sqn"],rlogreturn["rtot"],rlogreturn["ravg"],rlogreturn["rnorm"],maxDD,tmDD])
+            #print(ttt)
+            ttt=ttt+1
+    clms = ["dtk","dtdiffer","dtrangeDays","netpnl","avgpnl","totalcnt","profitfactor","won","lost","longavgprofit","shortavgprofit","vwr","sqn","totallogReturn","avglog","anuanlog","MaxDrawdown","TimeDrawdown"]
+    df = pd.DataFrame(final_results_list, columns=clms) 
+    df.to_csv("./DT_Tindex_ana.csv")

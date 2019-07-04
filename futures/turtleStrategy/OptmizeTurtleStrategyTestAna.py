@@ -8,14 +8,14 @@ import sys  # To find out the script name (in argv[0])
 # Import the backtrader platform
 import backtrader as bt
 import pandas as pd
-
+import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
         ('longIN',20 ),
-        ('differIN',1 ),
-        ('longExit',10 ),
-        ('differExit',1 ),
+        ('differIN',0 ),
+        ('longExitDiffer',0 ),
+        ('shortExitDiffer',0 ),
         ('atrDays',20 ),
         ('atrNo',2)
     )
@@ -45,11 +45,16 @@ class TurtleStrategy01(bt.Strategy):
         self.shortExit = None
         self.atrValue = None
         self.exitPrice = 0
+        self.longExitParam = int(self.params.longIN/2)+self.params.longExitDiffer
+        self.shortExitParam = int((self.params.longIN+self.params.differIN)/2)+self.params.shortExitDiffer
         # Add a MovingAverageSimple indicator
-        if self.params.longIN < self.params.longExit + 4:
-            return          
+        if (self.params.longIN - self.longExitParam) < 4:
+            print(self.params.longIN - self.longExitParam)
+            return     
+        self.atrValue = bt.indicators.ATR(
+            self.datas[1], period=self.params.atrDays, plot=False)             
         self.dayclose = self.datas[1]
-        self.dayclose.open = self.datas[1].open
+        self.dayclose.open = self.datas[1].close
         self.dayclose.high = self.datas[1].close
         self.dayclose.low = self.datas[1].close
         self.dayclose.close = self.datas[1].close          
@@ -60,14 +65,13 @@ class TurtleStrategy01(bt.Strategy):
         self.shortEntry = bt.indicators.Lowest(
             self.dayclose,period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
-            self.dayclose, period=self.params.longExit)
+            self.dayclose, period=self.longExitParam)
 
         self.shortExit = bt.indicators.Highest(
-            self.dayclose, period=(self.params.longExit+self.params.differExit))
+            self.dayclose, period=(self.shortExitParam))
         
         
-        self.atrValue = bt.indicators.ATR(
-            self.dayclose, period=self.params.atrDays, plot=False)
+
 
         '''
         # Indicators for the plotting show
@@ -127,18 +131,21 @@ class TurtleStrategy01(bt.Strategy):
             self.loseCount += 1
         self.tradeCount += 1    
     def next(self):
-        if self.params.longIN < self.params.longExit + 4:
+        if (self.params.longIN - self.longExitParam) < 4:
+            print(self.params.longIN - self.longExitParam)
             return
         # Simply log the closing price of the series from the reference
         #self.log('Close, %.2f' % self.dataclose[0])
-
+        #print(self.longEntry[0])
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if self.order:
             return
 
+        
         # Check if we are in the market
         if not self.position:
             self.entryNo = 0 
+            
             # Not yet ... we MIGHT BUY if ...
             if self.dataclose[0] > self.longEntry[0]:
 
@@ -219,24 +226,24 @@ class TurtleStrategy01(bt.Strategy):
   
     def stop(self):
         print('%2d,%2d,%2d,%2d,%2d,%2d,%2d,%2d,%.2f' %
-                 (self.params.longIN,self.params.differIN,self.params.longExit,self.params.differExit,self.params.atrDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
+                 (self.params.longIN,self.params.differIN,self.params.longExitDiffer,self.params.shortExitDiffer,self.params.atrDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': 
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6)
+    cerebro = bt.Cerebro(maxcpus=6,optreturn=False,stdstats=False)
 
     # Add a strategy
     #cerebro.addstrategy(TurtleStrategy01)   
      
-    strats = cerebro.optstrategy(
+    cerebro.optstrategy(
         TurtleStrategy01,
-        longIN=range(20, 28,2),
-        differIN=range(-2, 3),
-        longExit=range(10, 14),
-        differExit=range(-1, 2),
+        longIN=range(22, 28,2),
+        differIN=0,#range(-2, 3,2),
+        longExitDiffer=0,#range(-1, 2),
+        shortExitDiffer=0,#range(-1, 2),
         atrDays=20,  
-        atrNo=range(2, 3)                                            
+        atrNo=2                                            
         ) 
     
     # Set the commission
@@ -289,7 +296,8 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(200000.0)
+    startcash = 100000
+    cerebro.broker.setcash(startcash)
     cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -302,8 +310,64 @@ if __name__ == '__main__':
     print("LongIn,DifferIn,longExit,DifferExit,atrDays,TradeCount,Winning,Losing,Final Value")
     
     # Run over everything
-    cerebro.run()
+    cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
+    #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+    cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
+    cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
+    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')
+    cerebro.addanalyzer(btanalyzers.DrawDown, _name='Drawdown')
+    cerebro.addanalyzer(btanalyzers.TimeDrawDown, _name='TimeDrawdown',timeframe=bt.TimeFrame.Days)
+    opt_runs = cerebro.run()
+    # Generate results list
+    final_results_list = []
+    ttt = 1
+    for run in opt_runs:
+        for strategy in run:
+            #value = round(strategy.broker.get_value(),2)
+            #PnL = round(value - startcash,2)
+            longin = strategy.params.longIN
+            differin = strategy.params.differIN
+            longexitdiffer = strategy.params.longExitDiffer
+            shortexitdiffer = strategy.params.shortExitDiffer
 
+            rvwr = strategy.analyzers.vwr.get_analysis()
+            rsqn = strategy.analyzers.SQN.get_analysis()
+            rlogreturn = strategy.analyzers.logreturn.get_analysis()
+            rTradeAnalyzer = strategy.analyzers.TradeAnalyzer.get_analysis()
+            if (len(rTradeAnalyzer) < 3):
+                continue
+            netpnl = rTradeAnalyzer["pnl"]["net"]["total"]
+            avgpnl = rTradeAnalyzer["pnl"]["net"]["average"]
+            tcnt = rTradeAnalyzer["total"]["total"]
+            if tcnt == 0:
+                continue
+            won = rTradeAnalyzer["won"]["total"]
+            lost = rTradeAnalyzer["lost"]["total"]
+            
+            wlr = float(won/(won+lost))
+            if abs(rTradeAnalyzer['lost']['pnl']['total']) <0.001:
+                plr = 0
+            else:
+                plr = abs( rTradeAnalyzer['won']['pnl']['total'])/abs(rTradeAnalyzer['lost']['pnl']['total'])
+            profitfactor = wlr*plr/(1-wlr)            
+            
+            longavg = rTradeAnalyzer["long"]["pnl"]["average"]
+            shortavg = rTradeAnalyzer["short"]["pnl"]["average"]
+            ddAna = strategy.analyzers.Drawdown.get_analysis()
+
+            tmAna = strategy.analyzers.TimeDrawdown.get_analysis() 
+
+            maxDD = ddAna["max"]["drawdown"]
+            
+            tmDD = tmAna["maxdrawdownperiod"]
+            
+
+            final_results_list.append([longin,differin,longexitdiffer,shortexitdiffer,netpnl,avgpnl,tcnt,profitfactor,won,lost,longavg,shortavg,rvwr["vwr"],rsqn["sqn"],rlogreturn["rtot"],rlogreturn["ravg"],rlogreturn["rnorm"],maxDD,tmDD])
+            #print(ttt)
+            ttt=ttt+1
+    clms = ["longin","differin","longexitdiffer","shortexitdiffer","netpnl","avgpnl","totalcnt","profitfactor","won","lost","longavgprofit","shortavgprofit","vwr","sqn","totallogReturn","avglog","anuanlog","MaxDrawdown","TimeDrawdown"]
+    df = pd.DataFrame(final_results_list, columns=clms) 
+    df.to_csv("./tr2_test.csv")
     # Print out the final result
     #print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
