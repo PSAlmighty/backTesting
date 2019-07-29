@@ -232,9 +232,9 @@ if __name__ == '__main__':
     strats = cerebro.optstrategy(
         TurtleStrategy01,
         longIN=range(20, 28,2),
-        differIN=0,#range(-2, 3,2),
-        longExitDiffer=0,#range(-1, 2),
-        shortExitDiffer=0,#range(-1, 2),
+        differIN=range(-2, 4,2),
+        longExitDiffer=range(-1, 2),
+        shortExitDiffer=range(-1, 2),
         atrDays=20,  
         atrNo=range(2, 3)                                            
         ) 
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/RBindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/SRindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -276,7 +276,7 @@ if __name__ == '__main__':
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
         todate=datetime.datetime(2019,4, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)  
+        compression=1)  
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
 
@@ -360,4 +360,4 @@ if __name__ == '__main__':
             ttt=ttt+1
     clms = ["longin","differin","longexitdiffer","shortexitdiffer","netpnl","avgpnl","totalcnt","profitfactor","won","lost","longavgprofit","shortavgprofit","vwr","sqn","totallogReturn","avglog","anuanlog","MaxDrawdown","TimeDrawdown"]
     df = pd.DataFrame(final_results_list, columns=clms) 
-    df.to_csv("./tr2_test.csv")
+    df.to_csv("./tempOut/TT_SRorg_ANA.csv")

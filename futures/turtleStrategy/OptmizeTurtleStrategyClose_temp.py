@@ -12,10 +12,10 @@ import backtrader.analyzers as btanalyzers
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
-        ('longIN',20  ),
+        ('longIN',20 ),
         ('differIN',0 ),
-        ('longExit',10 ),
-        ('differExit',0 ),
+        ('longExitDiffer',0 ),
+        ('shortExitDiffer',0 ),
         ('atrDays',20 ),
         ('atrNo',2)
     )
@@ -45,30 +45,34 @@ class TurtleStrategy01(bt.Strategy):
         self.shortExit = None
         self.atrValue = None
         self.exitPrice = 0
+        self.longExitParam = int(self.params.longIN/2)+self.params.longExitDiffer
+        self.shortExitParam = int((self.params.longIN+self.params.differIN)/2)+self.params.shortExitDiffer
         # Add a MovingAverageSimple indicator
-        if self.params.longIN < self.params.longExit + 4:
-            return          
+        if (self.params.longIN - self.longExitParam) < 4:
+            print(self.params.longIN - self.longExitParam)
+            return     
+    
+        self.atrValue = bt.indicators.ATR(
+            self.datas[1], period=self.params.atrDays, plot=False)             
         self.dayclose = self.datas[1]
-        self.dayclose.plotinfo.plot = False
-        #self.dayclose.open = self.datas[1].open
-        #self.dayclose.high = self.datas[1].high
-        #self.dayclose.low = self.datas[1].low
-        #self.dayclose.close = self.datas[1].close          
+        self.dayclose.open = self.datas[1].close
+        self.dayclose.high = self.datas[1].close
+        self.dayclose.low = self.datas[1].close
+        self.dayclose.close = self.datas[1].close          
         
-        self.longEntry = bt.indicators.Highest(self.datas[1],period=self.params.longIN)
+        self.longEntry = bt.indicators.Highest(self.dayclose,period=self.params.longIN)
         #bt.indicators.Highest(
         #    self.data1, self.params.longIN)
         self.shortEntry = bt.indicators.Lowest(
-            self.datas[1],period=(self.params.longIN+self.params.differIN))
+            self.dayclose,period=(self.params.longIN+self.params.differIN))
         self.longExit = bt.indicators.Lowest(
-            self.datas[1], period=self.params.longExit)
+            self.dayclose, period=self.longExitParam)
 
         self.shortExit = bt.indicators.Highest(
-            self.datas[1], period=(self.params.longExit+self.params.differExit))
+            self.dayclose, period=(self.shortExitParam))
         
         
-        self.atrValue = bt.indicators.ATR(
-            self.datas[1], period=self.params.atrDays, plot=False)
+
 
         '''
         # Indicators for the plotting show
@@ -128,7 +132,7 @@ class TurtleStrategy01(bt.Strategy):
             self.loseCount += 1
         self.tradeCount += 1    
     def next(self):
-        if self.params.longIN < self.params.longExit + 4:
+        if self.params.longIN < self.longExitParam + 4:
             return
         # Simply log the closing price of the series from the reference
         #self.log('Close, %.2f' % self.dataclose[0])
@@ -142,7 +146,6 @@ class TurtleStrategy01(bt.Strategy):
             self.entryNo = 0 
             # Not yet ... we MIGHT BUY if ...
             if self.dataclose[0] > self.longEntry[0]:
-                #print(self.atrValue[0])
 
                 # BUY, BUY, BUY!!! (with all possible default parameters)
                 #self.log('BUY CREATE, %.2f' % self.dataclose[0])
@@ -221,28 +224,37 @@ class TurtleStrategy01(bt.Strategy):
   
     def stop(self):
         print('%2d,%2d,%2d,%2d,%2d,%2d,%2d,%2d,%.2f' %
-                 (self.params.longIN,self.params.differIN,self.params.longExit,self.params.differExit,self.params.atrDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
+                 (self.params.longIN,self.params.differIN,self.params.longExitDiffer,self.params.shortExitDiffer,self.params.atrDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
 
 
 if __name__ == '__main__':
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6)
+    
+    import time
+    time.sleep(3600*20)
+    cerebro = bt.Cerebro(maxcpus=6,optreturn=False,stdstats=False)
 
     # Add a strategy
     #cerebro.addstrategy(TurtleStrategy01)   
      
-    cerebro.addstrategy(TurtleStrategy01)
-
+    strats = cerebro.optstrategy(
+        TurtleStrategy01,
+        longIN=range(18, 38,2),
+        differIN=range(-2, 4,2),
+        longExitDiffer=range(-1, 2),
+        shortExitDiffer=range(-1, 2),
+        atrDays=20,  
+        atrNo=range(2, 3)                                            
+        ) 
     
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =5,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    #datapath = os.path.join(modpath, '../../datas/RBindex_10m.csv')
-    datapath = os.path.join(modpath, '../../datas/PPindex.csv')
-    
+    datapath = os.path.join(modpath, '../../datas/SFindex.csv')
+
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
     
@@ -269,13 +281,14 @@ if __name__ == '__main__':
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 1),
+    p0 = p0.dropna()
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
         todate=datetime.datetime(2019,4, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)  
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
-    data.plotinfo.plot = False
+
 
     # Add the Data Feed to Cerebro
     #cerebro.resampledata(data,timeframe=bt.TimeFrame.Minutes,compression=10)
@@ -294,39 +307,65 @@ if __name__ == '__main__':
     #cerebro.broker.setcommission(commission=0.0)
 
     # Print out the starting conditions
+    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    print("LongIn,DifferIn,longExit,DifferExit,atrDays,TradeCount,Winning,Losing,Final Value")
+
     cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
     #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
     cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
     cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
-    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
-    cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')  
-    cerebro.addobserver(bt.observers.Value)
-    thestrats = cerebro.run(stdstats=False)
-    thestrat = thestrats[0]
-    # Print out the final result
+    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')
+    cerebro.addanalyzer(btanalyzers.DrawDown, _name='Drawdown')
+    cerebro.addanalyzer(btanalyzers.TimeDrawDown, _name='TimeDrawdown',timeframe=bt.TimeFrame.Days)    
+    # Run over everything
+    opt_runs = cerebro.run()
 
-    # Plot the result
-    #cerebro.plot(style='bar')
-    #cerebro.report('./outPDF')
-    print('VWR:', thestrat.analyzers.vwr.get_analysis()) 
-    print('logreturn:',  thestrat.analyzers.logreturn.get_analysis()) 
-    print('Anual Ratio:',  thestrat.analyzers.SQN.get_analysis()) 
-    print('Anual Ratio:',  thestrat.analyzers.TradeAnalyzer.get_analysis()) 
-    tempDict=thestrat.analyzers.TXs.get_analysis()
-    orderList = []
-    
-    for key in tempDict:
-        #print(tempDict[key])
-        #sys.exit(0)
-        line = [key,tempDict[key][0][0],tempDict[key][0][1]]
-        orderList.append(line )
-    
-    print(orderList)    
-    dt = [i[0] for i in orderList]
-    position = [i[1] for i in orderList]
-    price = [i[2] for i in orderList]
-    tempDict = {'Datetime':dt,'Position':position,'price':price}
-    cntDF = pd.DataFrame(tempDict)     
-    cntDF.to_csv("./tempOut/orders.csv")
-    #print(cntDF  )   
-    cerebro.plot()        
+    final_results_list = []
+    ttt = 1
+    for run in opt_runs:
+        for strategy in run:
+            #value = round(strategy.broker.get_value(),2)
+            #PnL = round(value - startcash,2)
+            longin = strategy.params.longIN
+            differin = strategy.params.differIN
+            longexitdiffer = strategy.params.longExitDiffer
+            shortexitdiffer = strategy.params.shortExitDiffer
+
+            rvwr = strategy.analyzers.vwr.get_analysis()
+            rsqn = strategy.analyzers.SQN.get_analysis()
+            rlogreturn = strategy.analyzers.logreturn.get_analysis()
+            rTradeAnalyzer = strategy.analyzers.TradeAnalyzer.get_analysis()
+            if (len(rTradeAnalyzer) < 3):
+                continue
+            netpnl = rTradeAnalyzer["pnl"]["net"]["total"]
+            avgpnl = rTradeAnalyzer["pnl"]["net"]["average"]
+            tcnt = rTradeAnalyzer["total"]["total"]
+            if tcnt == 0:
+                continue
+            won = rTradeAnalyzer["won"]["total"]
+            lost = rTradeAnalyzer["lost"]["total"]
+
+            wlr = float(won/(won+lost))
+            if abs(rTradeAnalyzer['lost']['pnl']['total']) <0.001:
+                plr = 0
+            else:
+                plr = abs( rTradeAnalyzer['won']['pnl']['total'])/abs(rTradeAnalyzer['lost']['pnl']['total'])
+            profitfactor = wlr*plr/(1-wlr)
+            
+            longavg = rTradeAnalyzer["long"]["pnl"]["average"]
+            shortavg = rTradeAnalyzer["short"]["pnl"]["average"]
+            ddAna = strategy.analyzers.Drawdown.get_analysis()
+
+            tmAna = strategy.analyzers.TimeDrawdown.get_analysis() 
+
+            maxDD = ddAna["max"]["drawdown"]
+            
+            tmDD = tmAna["maxdrawdownperiod"]
+            
+
+            final_results_list.append([longin,differin,longexitdiffer,shortexitdiffer,netpnl,avgpnl,tcnt,profitfactor,won,lost,longavg,shortavg,rvwr["vwr"],rsqn["sqn"],rlogreturn["rtot"],rlogreturn["ravg"],rlogreturn["rnorm"],maxDD,tmDD])
+            #print(ttt)
+            ttt=ttt+1
+    clms = ["longin","differin","longexitdiffer","shortexitdiffer","netpnl","avgpnl","totalcnt","profitfactor","won","lost","longavgprofit","shortavgprofit","vwr","sqn","totallogReturn","avglog","anuanlog","MaxDrawdown","TimeDrawdown"]
+    df = pd.DataFrame(final_results_list, columns=clms) 
+    df.to_csv("./tempOut/TT_SF_ANA.csv")

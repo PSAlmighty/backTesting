@@ -18,7 +18,7 @@ class DTStrategy01(bt.Strategy):
     params = (
         ('ordersize', 1),
         ('k',4 ),
-        ('differ',4 ),
+        ('differ',1 ),
         ('rangeDays',4 )
     )
     def log(self, txt, dt=None):
@@ -129,7 +129,8 @@ class DTStrategy01(bt.Strategy):
         
         if self.todayOpen == 0:
             return
-           
+        if self.theK2 < 0.1:
+            return   
         self.longIn = 0
         self.shortIn = 0
         self.theRange = 0
@@ -212,12 +213,12 @@ if __name__ == '__main__':
     strats = cerebro.optstrategy(
         DTStrategy01,
         ordersize = 1,
-        k=range(1,20 ,1), 
+        k=range(2,20 ,1), 
         differ=range(-2,3 ,1), 
         rangeDays =range(2, 12,1)
         )    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10000,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =5,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -227,7 +228,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/Tindex.csv')
+    datapath = os.path.join(modpath, '../../datas/ALindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -257,9 +258,9 @@ if __name__ == '__main__':
     #print(p0)
     p0 = p0.dropna()
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019, 3, 1),
+        todate=datetime.datetime(2019, 5, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=1)
+        compression=10)
     
 
     # Add the Data Feed to Cerebro
@@ -270,7 +271,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(300000.0)
+    cerebro.broker.setcash(200000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -326,7 +327,10 @@ if __name__ == '__main__':
                 plr = 0
             else:
                 plr = abs( rTradeAnalyzer['won']['pnl']['total'])/abs(rTradeAnalyzer['lost']['pnl']['total'])
-            profitfactor = wlr*plr/(1-wlr)
+            if wlr == 1:
+                profitfactor = 0
+            else:
+                profitfactor = wlr*plr/(1-wlr)
             
             longavg = rTradeAnalyzer["long"]["pnl"]["average"]
             shortavg = rTradeAnalyzer["short"]["pnl"]["average"]
@@ -344,4 +348,4 @@ if __name__ == '__main__':
             ttt=ttt+1
     clms = ["dtk","dtdiffer","dtrangeDays","netpnl","avgpnl","totalcnt","profitfactor","won","lost","longavgprofit","shortavgprofit","vwr","sqn","totallogReturn","avglog","anuanlog","MaxDrawdown","TimeDrawdown"]
     df = pd.DataFrame(final_results_list, columns=clms) 
-    df.to_csv("./DT_Tindex_ana.csv")
+    df.to_csv("./DT_ALindex_10mana.csv")

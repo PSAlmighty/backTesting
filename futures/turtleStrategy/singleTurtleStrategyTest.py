@@ -51,6 +51,7 @@ class TurtleStrategy01(bt.Strategy):
         self.atrValue = bt.indicators.ATR(
             self.datas[1], period=self.params.atrDays, plot=False)                  
         self.dayclose = self.datas[1]
+        self.dayclose.plotinfo.plot = False
         self.dayclose.open = self.datas[1].close
         self.dayclose.high = self.datas[1].close
         self.dayclose.low = self.datas[1].close
@@ -244,7 +245,7 @@ if __name__ == '__main__':
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
     #datapath = os.path.join(modpath, '../../datas/RBindex_10m.csv')
-    datapath = os.path.join(modpath, '../../datas/rbindex_10m.csv')
+    datapath = os.path.join(modpath, '../../datas/SFindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -275,20 +276,20 @@ if __name__ == '__main__':
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 1),
         todate=datetime.datetime(2019,4, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=10)  
+        compression=1)  
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
-
+    data.plotinfo.plot = False
 
     # Add the Data Feed to Cerebro
     #cerebro.resampledata(data,timeframe=bt.TimeFrame.Minutes,compression=10)
 
     cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
-
+    #data[1].plotinfo.plot = False
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(100000.0)
+    cerebro.broker.setcash(200000.0)
     cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -307,7 +308,8 @@ if __name__ == '__main__':
     cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
     cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
     cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')
-    thestrats = cerebro.run()
+    cerebro.addobserver(bt.observers.Value)
+    thestrats = cerebro.run(stdstats=False)   
     thestrat = thestrats[0]
     # Print out the final result
 
@@ -334,4 +336,4 @@ if __name__ == '__main__':
     tempDict = {'Datetime':dt,'Position':position,'price':price}
     cntDF = pd.DataFrame(tempDict)     
     cntDF.to_csv("./tempOut/orders.csv")
-    #print(cntDF  )       
+    cerebro.plot()      

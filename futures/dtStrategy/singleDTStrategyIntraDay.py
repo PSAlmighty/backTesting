@@ -16,9 +16,9 @@ import backtrader.analyzers as btanalyzers
 class DTStrategy01(bt.Strategy):
     params = (
         ('ordersize', 1),
-        ('k',3 ),
+        ('k',2 ),
         ('differ',1 ),
-        ('rangeDays',6 )
+        ('rangeDays',10 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10000,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/Tindex.csv')
+    datapath = os.path.join(modpath, '../../datas/rbindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -252,8 +252,8 @@ if __name__ == '__main__':
     p0.drop("seqno",axis=1, inplace=True)
     p0 = p0.dropna()
     #print(p0)
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2015, 1, 2),
-        todate=datetime.datetime(2016, 3, 1),
+    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
+        todate=datetime.datetime(2019, 6, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)
     
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(300000.0)
+    cerebro.broker.setcash(200000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
