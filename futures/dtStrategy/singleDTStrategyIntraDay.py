@@ -11,7 +11,37 @@ import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
+import math
 
+# Create a Sizer
+class maxRiskSizer(bt.Sizer):
+    '''
+    Returns the number of shares rounded down that can be purchased for the
+    max rish tolerance
+    '''
+    params = (('risk', 0.01),)
+
+    def __init__(self):
+        if self.p.risk > 1 or self.p.risk < 0:
+            raise ValueError('The risk parameter is a percentage which must be'
+                'entered as a float. e.g. 0.5')
+
+    def _getsizing(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        if not position:
+            return 1
+            atrValue = bt.indicators.ATR(
+                self.data[1], period=20, plot=False) 
+            totalval = self.strategy.broker.get_value()
+            if atrValue:  
+                riskFactor = atrValue * comminfo.mult * 2
+                size = math.floor((totalval  * self.p.risk) / riskFactor)
+                return size
+            else:
+                return 0
+        else:
+            return position.size
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
@@ -28,8 +58,12 @@ class DTStrategy01(bt.Strategy):
     def __init__(self):
         self.tradeCount = 0
         self.winCount = 0
-        self.loseCount = 0                
-        self.orderSize = self.params.ordersize
+        self.loseCount = 0 
+                       
+
+        self.orderSize = self.params.ordersize   
+        #self.getsizing(self,self.datas)
+        #self.params.ordersize
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].close
         #self.date1 = self.datas[0].datetime.date
@@ -210,6 +244,7 @@ if __name__ == '__main__':
     cerebro = bt.Cerebro(maxcpus=6)
         
     cerebro.addstrategy(DTStrategy01)
+    cerebro.addsizer(maxRiskSizer)
     cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
     # Set the commission
@@ -253,7 +288,7 @@ if __name__ == '__main__':
     p0 = p0.dropna()
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019, 6, 1),
+        todate=datetime.datetime(2012, 6, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)
     
@@ -266,7 +301,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(200000.0)
+    cerebro.broker.setcash(300000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)

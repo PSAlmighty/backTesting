@@ -21,19 +21,20 @@ class maxRiskSizer(bt.Sizer):
     '''
     params = (('risk', 0.01),)
 
-    def __init__(self,atr):
+    def __init__(self):
         if self.p.risk > 1 or self.p.risk < 0:
             raise ValueError('The risk parameter is a percentage which must be'
                 'entered as a float. e.g. 0.5')
-        self._atr = self.strategy.atrValue
+        #self._atr = self.strategy.
 
     def _getsizing(self, comminfo, cash, data, isbuy):
         
         position = self.broker.getposition(data)
         if not position:
             totalval = self.strategy.broker.get_value()
-            if self._atr[0]:  
-                riskFactor = self._atr[0] * comminfo.mult * 2
+            atr = self.strategy.atrValue[0]
+            if atr != None:  
+                riskFactor = atr * comminfo.p.mult * 2
                 size = math.floor((totalval  * self.p.risk) / riskFactor)
                 return size
             else:
@@ -44,9 +45,9 @@ class maxRiskSizer(bt.Sizer):
 class DTStrategy01(bt.Strategy):
     params = (
         ('ordersize', 1),
-        ('k',2 ),
-        ('differ',1 ),
-        ('rangeDays',10 )
+        ('k',4 ),
+        ('differ',0 ),
+        ('rangeDays',5 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -108,27 +109,29 @@ class DTStrategy01(bt.Strategy):
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
-                ####self.log(
-                ####    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                ####    (order.executed.price,
-                ####     order.executed.value,
-                ####     order.executed.comm))
+                self.log(
+                    'BUY EXECUTED, Price: %.2f, pos: %.2f,Cost: %.2f, Comm %.2f' %
+                    (order.executed.price,
+                     order.executed.value/order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
 
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
                 self.bar_executed = len(self)
             else:  # Sell
-                ####self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                ####         (order.executed.price,
-                ####          order.executed.value,
-                ####          order.executed.comm))
+                self.log('SELL EXECUTED, Price: %.2f, pos: %.2f,Cost: %.2f, Comm %.2f' %
+                         (order.executed.price,
+                          order.executed.value/order.executed.price,
+                          order.executed.value,
+                          order.executed.comm))
                 pass
 
             self.bar_executed = len(self)
             self.tradeCount += 1
 
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            ####self.log('Order Canceled/Margin/Rejected')
+            self.log('Order Canceled/Margin/Rejected')
             pass
 
         # Write down: no pending order
@@ -155,7 +158,7 @@ class DTStrategy01(bt.Strategy):
         
         if self.order:
             return
-        self.orderSize = self.getsizing(data[0])
+        #self.orderSize = self.getsizing(data[0])
         
         if self.datas[0].datetime.date(0) != self.datas[0].datetime.date(-1):
             self.todayOpen = self.datas[0].open[0]
@@ -193,12 +196,12 @@ class DTStrategy01(bt.Strategy):
                 # BUY, BUY, BUY!!! (with all possible default parameters)
                 ####self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.buy()
 
             
             elif self.dataclose[0] < self.shortIn:
                 ####self.log('Short Create, %.2f'% self.dataclose[0])
-                self.order =self.order_target_size(target=-1*self.orderSize)         
+                self.order =self.sell()     
             
         elif self.position.size > 0 :
             if len(self)%300 == 0:
@@ -215,7 +218,7 @@ class DTStrategy01(bt.Strategy):
 
                 # Keep track of the created order to avoid a 2nd order
                 #self.order = self.close(price=self.datalow[0] < self.shortIn)
-                self.order = self.order_target_size(target=-1*self.orderSize)
+                self.order = self.sell()
                 #self.order_target_size(size )               
             else:
                 pass
@@ -228,7 +231,7 @@ class DTStrategy01(bt.Strategy):
                 
             if self.dataclose[0] > self.longIn:
                 ####self.log('Buy CREATE, %.2f' % (self.dataclose[0]))
-                self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.buy()
        
             else:
                 pass
@@ -288,7 +291,7 @@ if __name__ == '__main__':
     p0 = p0.dropna()
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2012, 6, 1),
+        todate=datetime.datetime(2019, 6, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)
     
@@ -301,7 +304,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(300000.0)
+    cerebro.broker.setcash(600000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
