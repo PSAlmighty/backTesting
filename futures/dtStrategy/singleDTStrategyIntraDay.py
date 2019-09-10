@@ -25,23 +25,24 @@ class maxRiskSizer(bt.Sizer):
         if self.p.risk > 1 or self.p.risk < 0:
             raise ValueError('The risk parameter is a percentage which must be'
                 'entered as a float. e.g. 0.5')
+        #self._atr = self.strategy.
 
     def _getsizing(self, comminfo, cash, data, isbuy):
         
         position = self.broker.getposition(data)
         if not position:
-            return 1
-            atrValue = bt.indicators.ATR(
-                self.data[1], period=20, plot=False) 
             totalval = self.strategy.broker.get_value()
-            if atrValue:  
-                riskFactor = atrValue * comminfo.mult * 2
+            atr = self.strategy.atrValue[0]
+            if atr != None:  
+                riskFactor = atr * comminfo.p.mult * 2
                 size = math.floor((totalval  * self.p.risk) / riskFactor)
                 return size
             else:
                 return 0
         else:
             return position.size
+
+
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
@@ -70,7 +71,8 @@ class DTStrategy01(bt.Strategy):
         #self.dayclose = self.datas[0].close
         #self.dayopen = self.datas[0].open
         #self.dayhigh = self.datas[0].high
-        #self.daylow = self.datas[0].low        
+        #self.daylow = self.datas[0].low  
+        self.atrValue = bt.indicators.ATR(self.datas[1], period=20, plot=False)      
         self.rgHigh = bt.indicators.Highest(self.datas[1].high,period=self.params.rangeDays)
         self.rgLow = bt.indicators.Lowest(self.datas[1].low,period=self.params.rangeDays)
         self.closeHigh = bt.indicators.Highest(self.datas[1].close,period=self.params.rangeDays)    
@@ -193,12 +195,12 @@ class DTStrategy01(bt.Strategy):
                 # BUY, BUY, BUY!!! (with all possible default parameters)
                 ####self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.buy()
 
             
             elif self.dataclose[0] < self.shortIn:
                 ####self.log('Short Create, %.2f'% self.dataclose[0])
-                self.order =self.order_target_size(target=-1*self.orderSize)         
+                self.order =self.sell()         
             
         elif self.position.size > 0 :
             if len(self)%300 == 0:
@@ -215,7 +217,7 @@ class DTStrategy01(bt.Strategy):
 
                 # Keep track of the created order to avoid a 2nd order
                 #self.order = self.close(price=self.datalow[0] < self.shortIn)
-                self.order = self.order_target_size(target=-1*self.orderSize)
+                self.order = self.sell()
                 #self.order_target_size(size )               
             else:
                 pass
@@ -228,7 +230,7 @@ class DTStrategy01(bt.Strategy):
                 
             if self.dataclose[0] > self.longIn:
                 ####self.log('Buy CREATE, %.2f' % (self.dataclose[0]))
-                self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.buy()
        
             else:
                 pass
@@ -239,9 +241,23 @@ class DTStrategy01(bt.Strategy):
                  (self.params.k,self.params.differ,self.params.rangeDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
 
 
+def pretty(d, indent=0):
+    for key, value in d.items():
+        if isinstance(value, dict):
+            print ('\t' * indent + (("%10s: {\n") % str(key).upper()))
+            pretty(value, indent+1)
+            print ('\t' * indent + ' ' * 12 + ('} # %s #\n' % str(key).upper()))
+        elif isinstance(value, list):
+            for val in value:
+                print ('\t' * indent + (("%30s: [\n") % str(key).upper()))
+                pretty(val, indent+1)
+                print ('\t' * indent + ' ' * 12 + ('] # %s #\n' % str(key).upper()))
+        else:
+            print ('\t' * indent + (("%10s: %s") % (str(key).upper(),str(value))))
+
 if __name__ == '__main__':
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6)
+    cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
         
     cerebro.addstrategy(DTStrategy01)
     cerebro.addsizer(maxRiskSizer)
@@ -288,7 +304,7 @@ if __name__ == '__main__':
     p0 = p0.dropna()
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2012, 6, 1),
+        todate=datetime.datetime(2019, 6, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=1)
     
@@ -347,4 +363,29 @@ if __name__ == '__main__':
     tempDict = {'Datetime':dt,'Position':position,'price':price}
     cntDF = pd.DataFrame(tempDict)     
     cntDF.to_csv("./tempOut/orders.csv")
+    tradedict = thestrat.analyzers.TradeAnalyzer.get_analysis()
+    print("below is for trade")
+
+    tradeAnalyzer = thestrat.analyzers.getbyname('TradeAnalyzer')  
+    print(tradeAnalyzer)           
+    pretty(tradeAnalyzer.get_analysis())
+    #trades = [str(trade).splitlines() for trade in (thestrat._trades.values())[0][0]]
+    #print(trades)
+    #td = thestrat._trades.values()
+    
+    ddd =  thestrat._trades
+    for key, value in ddd.items():
+        print(key,value)
+        for kk,vv in value.items():
+            print(kk,vv)
+            td = vv
+        
+    #print(td)
+    pnl = []
+    for value in td:
+        if value.status == 2:
+            pnl.append(value.pnlcomm)
+    df = pd.DataFrame(pnl,columns = ["pnl"])
+    df.to_csv("./pnl.csv")
+    #print(td)
     #print(cntDF  )       
