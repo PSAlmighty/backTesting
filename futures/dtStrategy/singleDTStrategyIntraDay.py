@@ -41,15 +41,27 @@ class maxRiskSizer(bt.Sizer):
                 return 0
         else:
             return position.size
+    def _getsizing1(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        
+        totalval = self.strategy.broker.get_value()
+        atr = self.strategy.atrValue[0]
+        if atr != None:  
+            riskFactor = atr * comminfo.p.mult * 2
+            size = math.floor((totalval  * self.p.risk) / riskFactor)
+            return size
+        else:
+            return 0
 
 
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
     params = (
         ('ordersize', 1),
-        ('k',2 ),
-        ('differ',1 ),
-        ('rangeDays',10 )
+        ('k',4 ),
+        ('differ',0 ),
+        ('rangeDays',5 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -257,6 +269,7 @@ def pretty(d, indent=0):
 
 if __name__ == '__main__':
     # Create a cerebro entity
+    lv_mult = 10
     cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
         
     cerebro.addstrategy(DTStrategy01)
@@ -264,7 +277,7 @@ if __name__ == '__main__':
     cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
     # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
+    cerebro.broker.setcommission(leverage=1,mult =lv_mult,commission=0.01)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -274,7 +287,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/rbindex.csv')
+    datapath = os.path.join(modpath, '../../datas/rbindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -304,9 +317,9 @@ if __name__ == '__main__':
     p0 = p0.dropna()
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019, 6, 1),
+        todate=datetime.datetime(2019, 1, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=1)
+        compression=10)
     
 
     # Add the Data Feed to Cerebro
@@ -350,18 +363,22 @@ if __name__ == '__main__':
     tempDict=thestrat.analyzers.TXs.get_analysis()
     orderList = []
     
+    #dfdf = pd.DataFrame.from_records(tempDict[0],columns=['ABCDE'])
+    #dfdf.to_csv("./tempOut/test.csv")
+    
     for key in tempDict:
         #print(tempDict[key])
         #sys.exit(0)
         line = [key,tempDict[key][0][0],tempDict[key][0][1]]
         orderList.append(line )
     
-    print(orderList)    
+    #print(orderList)    
     dt = [i[0] for i in orderList]
     position = [i[1] for i in orderList]
     price = [i[2] for i in orderList]
     tempDict = {'Datetime':dt,'Position':position,'price':price}
-    cntDF = pd.DataFrame(tempDict)     
+    cntDF = pd.DataFrame(tempDict)  
+    cntDF['mult'] = lv_mult   
     cntDF.to_csv("./tempOut/orders.csv")
     tradedict = thestrat.analyzers.TradeAnalyzer.get_analysis()
     print("below is for trade")

@@ -41,14 +41,17 @@ for oindex, orow in df.iterrows():
         openorder[orderid] = orow
     else:
         pass
-    if orderid == 2:
-        print('abc')
+    if orderid == 411:
+        pass#print('abc')
     for mindex, mrow in df_match.iterrows():
+        if mrow['orderid'] > 410:
+            pass#print('efg')
         if mrow['status'] == 1:
             if mrow['orderid'] == orderid:
-                processed = True
+                processed = True                
                 break
-            continue        
+            else:
+                continue        
         if orderid == mrow['orderid']:
             continue
 
@@ -64,13 +67,13 @@ for oindex, orow in df.iterrows():
             closetime = mrow["Datetime"]
             if len(openorder) > 0:
                 for okey, oval in openorder.items():
-                    pal = (closeprice-oval["price"])*oval['Position']
+                    pal = (closeprice-oval["price"])*oval['Position']*orow['mult']
                     matched = [oval['orderid'],oval['Datetime'],oval['price'],oval['Position'],closetime,closeprice,pal,mrow['orderid']]
                     matchorder.append(matched)
                     o_index = list(df_match.columns).index('status')
                     df_match.iloc[ oval['orderid'],o_index] = 1                      
             else:
-                pal = (closeprice-oprice)*mrow['Position']
+                pal = (closeprice-oprice)*orow['Position']*orow['mult']
                 matched = [orderid,odate,oprice,oqty,closetime,closeprice,pal,mrow['orderid']]
                 matchorder.append(matched)   
                 o_index = list(df_match.columns).index('status')
@@ -86,13 +89,13 @@ for oindex, orow in df.iterrows():
             closetime = mrow["Datetime"]
             if len(openorder) > 0:
                 for okey, oval in openorder.items():
-                    pal = (closeprice-oval["price"])*oval['Position']
+                    pal = (closeprice-oval["price"])*oval['Position']*orow['mult']
                     matched = [oval['orderid'],oval['Datetime'],oval['price'],oval['Position'],closetime,closeprice,pal,mrow['orderid']]
                     matchorder.append(matched)
                     o_index = list(df_match.columns).index('status')
                     df_match.iloc[ oval['orderid'],o_index] = 1                      
             else:
-                pal = (closeprice-oprice)*mrow['Position']
+                pal = (closeprice-oprice)*orow['Position']*orow['mult']
                 #matched = [mrow['orderid'],mrow['Datetime'],oprice,mrow['Position'],closetime,closeprice,pal]
                 matched = [orderid,odate,oprice,oqty,closetime,closeprice,pal,mrow['orderid']]
                 matchorder.append(matched)       
@@ -112,13 +115,16 @@ for oindex, orow in df.iterrows():
         else:
             #should only have few case happy, print the problem and manually check
             print("There is cover qty less than open quantity, need check.")
-            print(openorder)
+            print(orderid)
+            #print(openorder)
             openorder.clear()
             cumqty = 0
             break              
             
                                 
     if processed == True:
+        cumqty = 0
+        openorder.clear()
         continue        
             
 labels = ['OrderID', 'OpenTime', 'OpenPrice', 'OpenPosition','CloseTime','ClosePrice','PnL','CloseOrder']
