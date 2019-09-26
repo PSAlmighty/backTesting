@@ -9,6 +9,50 @@ import sys  # To find out the script name (in argv[0])
 import backtrader as bt
 import pandas as pd
 import backtrader.analyzers as btanalyzers
+import math
+
+# Create a Sizer
+class maxRiskSizer(bt.Sizer):
+    '''
+    Returns the number of shares rounded down that can be purchased for the
+    max rish tolerance
+    '''
+    params = (('risk', 0.01),)
+
+    def __init__(self):
+        if self.p.risk > 1 or self.p.risk < 0:
+            raise ValueError('The risk parameter is a percentage which must be'
+                'entered as a float. e.g. 0.5')
+        #self._atr = self.strategy.
+
+    def _getsizing1(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        if not position:
+            totalval = self.strategy.broker.get_value()
+            atr = self.strategy.atrValue[0]
+            #print(atr)
+            if atr != None:  
+                riskFactor = atr * comminfo.p.mult * 2
+                size = math.floor((totalval  * self.p.risk) / riskFactor)
+                return size
+            else:
+                return 0
+        else:
+            return position.size
+    def _getsizing(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        
+        totalval = self.strategy.broker.get_value()
+        atr = self.strategy.atrValue[0]
+        if atr != None:  
+            riskFactor = atr * comminfo.p.mult * 2
+            size = math.floor((totalval  * self.p.risk) / riskFactor)
+            return size
+        else:
+            return 0
+
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
@@ -235,6 +279,7 @@ if __name__ == '__main__':
     #cerebro.addstrategy(TurtleStrategy01)   
      
     cerebro.addstrategy(TurtleStrategy01)
+    cerebro.addsizer(maxRiskSizer)    
     #cerebro.addanalyzer(btanalyzers.VWR, _name='vwr')
     #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
     
@@ -245,7 +290,7 @@ if __name__ == '__main__':
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
     #datapath = os.path.join(modpath, '../../datas/RBindex_10m.csv')
-    datapath = os.path.join(modpath, '../../datas/SFindex.csv')
+    datapath = os.path.join(modpath, '../../datas/rbindex_10m.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -272,11 +317,12 @@ if __name__ == '__main__':
     '''
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
+    p0=p0[p0["volume"]!=0]
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 1),
         todate=datetime.datetime(2019,4, 1),
         timeframe= bt.TimeFrame.Minutes,
-        compression=1)  
+        compression=10)  
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
     data.plotinfo.plot = False
@@ -289,8 +335,8 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(200000.0)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
+    cerebro.broker.setcash(300000.0)
+    #cerebro.addsizer(bt.sizers.FixedSize, stake=1)
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
 

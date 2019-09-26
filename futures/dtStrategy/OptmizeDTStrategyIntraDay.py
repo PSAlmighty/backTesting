@@ -11,7 +11,52 @@ import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
+import math
 #from btreport.report import Cerebro
+
+
+# Create a Sizer
+class maxRiskSizer(bt.Sizer):
+    '''
+    Returns the number of shares rounded down that can be purchased for the
+    max rish tolerance
+    '''
+    params = (('risk', 0.01),)
+
+    def __init__(self):
+        if self.p.risk > 1 or self.p.risk < 0:
+            raise ValueError('The risk parameter is a percentage which must be'
+                'entered as a float. e.g. 0.5')
+        #self._atr = self.strategy.
+
+    def _getsizing(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        if not position:
+            totalval = self.strategy.broker.get_value()
+            atr = self.strategy.atrValue[0]
+            #print(atr)
+            if atr != None:  
+                riskFactor = atr * comminfo.p.mult * 2
+                size = math.floor((totalval  * self.p.risk) / riskFactor)
+                return size
+            else:
+                return 0
+        else:
+            return position.size
+    def _getsizing1(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        
+        totalval = self.strategy.broker.get_value()
+        atr = self.strategy.atrValue[0]
+        if atr != None:  
+            riskFactor = atr * comminfo.p.mult * 2
+            size = math.floor((totalval  * self.p.risk) / riskFactor)
+            return size
+        else:
+            return 0
+
 
 # Create a Stratey
 class DTStrategy01(bt.Strategy):
@@ -37,7 +82,8 @@ class DTStrategy01(bt.Strategy):
         #self.dayclose = self.datas[0].close
         #self.dayopen = self.datas[0].open
         #self.dayhigh = self.datas[0].high
-        #self.daylow = self.datas[0].low        
+        #self.daylow = self.datas[0].low  
+        self.atrValue = bt.indicators.ATR(self.datas[1], period=20, plot=False)        
         self.rgHigh = bt.indicators.Highest(self.datas[1].high,period=self.params.rangeDays)
         self.rgLow = bt.indicators.Lowest(self.datas[1].low,period=self.params.rangeDays)
         self.closeHigh = bt.indicators.Highest(self.datas[1].close,period=self.params.rangeDays)    
@@ -160,12 +206,12 @@ class DTStrategy01(bt.Strategy):
                 # BUY, BUY, BUY!!! (with all possible default parameters)
                 ####self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.buy()
 
             
             elif self.dataclose[0] < self.shortIn:
                 ####self.log('Short Create, %.2f'% self.dataclose[0])
-                self.order =self.order_target_size(target=-1*self.orderSize)         
+                self.order =self.sell()         
             
         elif self.position.size > 0 :
             if len(self)%300 == 0:
@@ -182,7 +228,7 @@ class DTStrategy01(bt.Strategy):
 
                 # Keep track of the created order to avoid a 2nd order
                 #self.order = self.close(price=self.datalow[0] < self.shortIn)
-                self.order = self.order_target_size(target=-1*self.orderSize)
+                self.order = self.sell()
                 #self.order_target_size(size )               
             else:
                 pass
@@ -195,7 +241,7 @@ class DTStrategy01(bt.Strategy):
                 
             if self.dataclose[0] > self.longIn:
                 ####self.log('Buy CREATE, %.2f' % (self.dataclose[0]))
-                self.order = self.order_target_size(target=self.orderSize)
+                self.order = self.buy()
        
             else:
                 pass
@@ -208,17 +254,18 @@ class DTStrategy01(bt.Strategy):
 
 if __name__ == '__main__':
     # Create a cerebro entity
-    cerebro = bt.Cerebro(maxcpus=6,optreturn=False,stdstats=False)
+    cerebro = bt.Cerebro(maxcpus=4,optreturn=False,stdstats=False)
     
     strats = cerebro.optstrategy(
         DTStrategy01,
         ordersize = 1,
-        k=range(2,20 ,1), 
-        differ=range(-2,3 ,1), 
+        k=range(4,7 ,1), 
+        differ=range(0,1 ,1), 
         rangeDays =range(2, 12,1)
         )    
     # Set the commission
     cerebro.broker.setcommission(leverage=1,mult =5,commission=0.01)
+    cerebro.addsizer(maxRiskSizer)
     #cerebro.broker.setcommission(commission=0.0)
     # Add a strategy
     #cerebro.addstrategy(DTStrategy01)
@@ -257,8 +304,9 @@ if __name__ == '__main__':
     p0.drop("seqno",axis=1, inplace=True)
     #print(p0)
     p0 = p0.dropna()
+    p0 = p0[p0['volume'] !=0]
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
-        todate=datetime.datetime(2019, 5, 1),
+        todate=datetime.datetime(2010, 5, 1),
         timeframe= bt.TimeFrame.Minutes,
         compression=10)
     

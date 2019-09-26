@@ -9,6 +9,49 @@ import sys  # To find out the script name (in argv[0])
 import backtrader as bt
 import pandas as pd
 import backtrader.analyzers as btanalyzers
+import math
+# Create a Sizer
+class maxRiskSizer(bt.Sizer):
+    '''
+    Returns the number of shares rounded down that can be purchased for the
+    max rish tolerance
+    '''
+    params = (('risk', 0.01),)
+
+    def __init__(self):
+        if self.p.risk > 1 or self.p.risk < 0:
+            raise ValueError('The risk parameter is a percentage which must be'
+                'entered as a float. e.g. 0.5')
+        #self._atr = self.strategy.
+
+    def _getsizing1(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        if not position:
+            totalval = self.strategy.broker.get_value()
+            atr = self.strategy.atrValue[0]
+            #print(atr)
+            if atr != None:  
+                riskFactor = atr * comminfo.p.mult * 2
+                size = math.floor((totalval  * self.p.risk) / riskFactor)
+                return size
+            else:
+                return 0
+        else:
+            return position.size
+    def _getsizing(self, comminfo, cash, data, isbuy):
+        
+        position = self.broker.getposition(data)
+        
+        totalval = self.strategy.broker.get_value()
+        atr = self.strategy.atrValue[0]
+        if atr != None:  
+            riskFactor = atr * comminfo.p.mult * 2
+            size = math.floor((totalval  * self.p.risk) / riskFactor)
+            return size
+        else:
+            return 0
+
 # Create a Stratey
 class TurtleStrategy01(bt.Strategy):
     params = (
@@ -248,7 +291,7 @@ if __name__ == '__main__':
     
     # Set the commission
     cerebro.broker.setcommission(leverage=1,mult =10,commission=0.01)
-
+    cerebro.addsizer(maxRiskSizer)
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -279,6 +322,7 @@ if __name__ == '__main__':
     '''
     p0 = pd.read_csv(datapath, index_col='datetime', parse_dates=True)
     p0.drop("seqno",axis=1, inplace=True)
+    p0=p0[p0["volume"]!=0]
     #print(p0)
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(2009, 1, 2),
         todate=datetime.datetime(2019,4, 1),

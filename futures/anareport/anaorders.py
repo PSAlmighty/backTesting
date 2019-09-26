@@ -7,11 +7,12 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-df = pd.read_csv("./datas/orders111.csv",index_col = 0)
+df = pd.read_csv("./datas/orders.csv",index_col = 0)
 df["orderid"] = df.index
 df["status"] = 0  # 0 unprocessed 1 matched 2, partial match 
 df['closeprice'] = 0
 df['pnl'] = 0
+df['mult'] = 10
 df_match = df
 #cumcost = 0
 cumqty = 0
