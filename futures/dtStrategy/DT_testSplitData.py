@@ -10,7 +10,6 @@ import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
 from dtClasses.dtStrategyV12 import maxRiskSizer,dtStrategyV12
-from sqlalchemy.dialects.postgresql.ranges import DATERANGE
 
 def pretty(d, indent=0):
     for key, value in d.items():
@@ -27,6 +26,7 @@ def pretty(d, indent=0):
             print ('\t' * indent + (("%10s: %s") % (str(key).upper(),str(value))))
 def splitDF(df,itv):
     stime = df.index.min()
+    print(stime)
     etime = df.index.max()
     endlist = list(date_range(stime,etime,itv))
     print(endlist)
@@ -49,149 +49,75 @@ if __name__ == '__main__':
     p0.drop("seqno",axis=1, inplace=True)
     p0 = p0.dropna()
     p0 = p0[p0['volume'] !=0]
+    sbname ="T"
+    lv_mult = 10000
+    lv_cash = 3000000
+    startyear = 2009
+    endyear = 2018
+    starttime = datetime.datetime(startyear, 1, 1)
     daterange = splitDF(p0,3)
-    for d in DATERANGE:
-        pass
+    lv_endval = 0
+    lv_sharp = 0
+    lv_vwr = 0
+    lv_return = 0
+    lv_sqn = 0
+    lv_avgpnl = 0
+    lv_win = 0
+    lv_loss = 0
+    lv_maxdd = 0
+    lv_ddtime = 0
+    rst = []
+    for idx,val in enumerate(daterange):
+        if idx == 0:
+            continue
         # for every range do the back testing via cebero and save the result in a list
         # save the result and eveluate the performance
-    
-    sys.exit(0)
-    
-    
-    # Create a cerebro entity
-    lv_mult = 10
-    cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
+        # Create a cerebro entity    
+        cerebro = bt.Cerebro(maxcpus=7,tradehistory=True)
         
-    cerebro.addstrategy(dtStrategyV12)
-    cerebro.addsizer(maxRiskSizer)
-    cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
-    cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
-    # Set the commission
-    cerebro.broker.setcommission(leverage=1,mult =lv_mult,commission=0.01)
-    #cerebro.broker.setcommission(commission=0.0)
-    # Add a strategy
-    #cerebro.addstrategy(DTStrategy01)
-    #cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
-    #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
-   
-    # Datas are in a subfolder of the samples. Need to find where the script is
-    # because it could have been called from anywhere
-
-    tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
-                   monthly=bt.TimeFrame.Months)
-    
-
-    
-    #print(datapath)
-    # Create a Data Feed
-    
-    '''
-    data = bt.feeds.GenericCSVData(
-        dataname=datapath,
-        datetime=1,
-        fromdate=datetime.datetime(2009, 01, 01),
-        todate=datetime.datetime(2009, 07, 10),
-        timeframe= bt.TimeFrame.Minutes,
-        compression=1,
-        dtformat=('%Y-%m-%d %H:%M:%S'),
-        open=2,
-        high=3,
-        low=4,
-        close=5,
-        volume=6)
-    '''
-
-    #print(p0)
-    startyear = 2017
-    endyear = 2018
-    sbname ="T"
-    data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(startyear, 3, 2),
-        todate=datetime.datetime(endyear, 3, 1),
-        timeframe= bt.TimeFrame.Minutes,
-        compression=1)
-    
-
-    # Add the Data Feed to Cerebro
-    cerebro.adddata(data)
-
-    cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
-
-    #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
-
-    # Set our desired cash start
-    cerebro.broker.setcash(300000.0)
-
-    # Add a FixedSize sizer according to the stake
-    #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
-
-    # Set the commission
-    #cerebro.broker.setcommission(commission=0.0)
-
-    # Print out the starting conditions
-    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    print('P1,P2,P3,TradeCount,Winning,Losing,Final Value')
-    # Run over everything
-    # Run over everything
-    cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
-    #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
-    cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
-    cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
-    cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
-    cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')
-    thestrats = cerebro.run()
-    thestrat = thestrats[0]
-    # Print out the final result
-
-    # Plot the result
-    #cerebro.plot(style='bar')
-    #cerebro.report('./outPDF')
-    print('VWR:', thestrat.analyzers.vwr.get_analysis()) 
-    print('logreturn:',  thestrat.analyzers.logreturn.get_analysis()) 
-    print('Anual Ratio:',  thestrat.analyzers.SQN.get_analysis()) 
-    print('Anual Ratio:',  thestrat.analyzers.TradeAnalyzer.get_analysis()) 
-    tempDict=thestrat.analyzers.TXs.get_analysis()
-    orderList = []
-    
-    #dfdf = pd.DataFrame.from_records(tempDict[0],columns=['ABCDE'])
-    #dfdf.to_csv("./tempOut/test.csv")
-    
-    for key in tempDict:
-        #print(tempDict[key])
-        #sys.exit(0)
-        line = [key,tempDict[key][0][0],tempDict[key][0][1]]
-        orderList.append(line )
-    
-    #print(orderList)    
-    dt = [i[0] for i in orderList]
-    position = [i[1] for i in orderList]
-    price = [i[2] for i in orderList]
-    tempDict = {'Datetime':dt,'Position':position,'price':price}
-    cntDF = pd.DataFrame(tempDict)  
-    cntDF['mult'] = lv_mult   
-    cntDF.to_csv("./tempOut/orders"+str(endyear)+".csv")
-    tradedict = thestrat.analyzers.TradeAnalyzer.get_analysis()
-    print("below is for trade")
-
-    tradeAnalyzer = thestrat.analyzers.getbyname('TradeAnalyzer')  
-    print(tradeAnalyzer)           
-    pretty(tradeAnalyzer.get_analysis())
-    #trades = [str(trade).splitlines() for trade in (thestrat._trades.values())[0][0]]
-    #print(trades)
-    #td = thestrat._trades.values()
-    
-    ddd =  thestrat._trades
-    for key, value in ddd.items():
-        print(key,value)
-        for kk,vv in value.items():
-            print(kk,vv)
-            td = vv
+        cerebro.addstrategy(dtStrategyV12)
+        cerebro.addsizer(maxRiskSizer)
         
-    #print(td)
-    pnl = []
-    for value in td:
-        if value.status == 2:
-            pnl.append(value.pnlcomm)
-    df = pd.DataFrame(pnl,columns = ["pnl"])
-    df.to_csv("./pnl/"+sbname+"_pnl"+str(endyear)+".csv")
-    #print(td)
-    #print(cntDF  )       
+        #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
+        # Set the commission
+        cerebro.broker.setcommission(leverage=1,mult =lv_mult,commission=0.01)
+
+        tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
+                       monthly=bt.TimeFrame.Months)
+           
+        data = bt.feeds.PandasData(dataname = p0,fromdate=starttime,
+            todate=val,timeframe= bt.TimeFrame.Minutes,compression=1)
+        # Add the Data Feed to Cerebro
+        cerebro.adddata(data)
+
+        cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
+        # Set our desired cash start
+        cerebro.broker.setcash(lv_cash)
+        # Run over everything
+        cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
+        cerebro.addanalyzer(btanalyzers.VWR, _name='vwr',timeframe=bt.TimeFrame.Years)
+        #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')
+        cerebro.addanalyzer(btanalyzers.Returns, _name='logreturn',timeframe=bt.TimeFrame.Years)
+        cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
+        cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
+        cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')
+        thestrats = cerebro.run()
+        thestrat = thestrats[0]
+        # Print out the final result
+        lv_endval = cerebro.broker.getvalue()
+        lv_sharp = thestrat.analyzers.mysharpe.get_analysis()['sharperatio']
+        lv_vwr = thestrat.analyzers.vwr.get_analysis()['vwr']
+        lv_return = thestrat.analyzers.logreturn.get_analysis()['rnorm'] 
+        lv_sqn =  thestrat.analyzers.SQN.get_analysis()['sqn']
+        td =  thestrat.analyzers.TradeAnalyzer.get_analysis()
+        lv_cnt = td['total']['total']
+        lv_win = td['won']['total']
+        lv_avgpnl = td['pnl']['net']['average']
+        lv_winavg = td['won']['pnl']['average']
+        lv_lossavg = td['lost']['pnl']['average']
+        line = [val,lv_endval,lv_sharp,lv_vwr,lv_return,lv_sqn,lv_cnt,lv_win,lv_avgpnl,lv_winavg,lv_lossavg]
+        rst.append(line)
+    
+    mydf = pd.DataFrame(rst,columns = ['Enddate','Endvalue','Sharp','VWR','Logreturn','SQN','Count','wincnt','AvgPnL','AvgWin','AvgLoss'])
+    mydf.to_csv("./tempOut/bt/"+sbname+".csv")
+    print("Congratulations, succed!")

@@ -361,6 +361,7 @@ if __name__ == '__main__':
     # Plot the result
     #cerebro.plot(style='bar')
     #cerebro.report('./outPDF')
+    print('sharp:', thestrat.analyzers.mysharpe.get_analysis())
     print('VWR:', thestrat.analyzers.vwr.get_analysis()) 
     print('logreturn:',  thestrat.analyzers.logreturn.get_analysis()) 
     print('Anual Ratio:',  thestrat.analyzers.SQN.get_analysis()) 
