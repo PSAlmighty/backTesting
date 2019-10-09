@@ -10,6 +10,7 @@ import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
 from dtClasses.dtStrategyV12 import maxRiskSizer,dtStrategyV12
+from backtrader import cerebro
 
 def pretty(d, indent=0):
     for key, value in d.items():
@@ -76,8 +77,8 @@ if __name__ == '__main__':
         cerebro = bt.Cerebro(maxcpus=7,tradehistory=True)
         
         cerebro.addstrategy(dtStrategyV12)
-        cerebro.addsizer(maxRiskSizer)
-        
+        #cerebro.addsizer(maxRiskSizer)
+        cerebro.addsizer(bt.sizers.FixedSize, stake=1)
         #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
         # Set the commission
         cerebro.broker.setcommission(leverage=1,mult =lv_mult,commission=0.01)

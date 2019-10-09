@@ -288,7 +288,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/Tindex.csv')
+    datapath = os.path.join(modpath, '../../datas/rbindex.csv')
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
@@ -317,6 +317,18 @@ if __name__ == '__main__':
     p0.drop("seqno",axis=1, inplace=True)
     p0 = p0.dropna()
     p0 = p0[p0['volume'] !=0]
+    #print(p0.index)
+    p0["hour"] = str(p0.index.hour)
+    p0["min"] = str(p0.index.minute)
+    p0["hm"] = p0["hour"]+p0["min"]
+    s1 = datetime.time(1,1)
+    s2 = datetime.time(1,2)
+    s3 = datetime.time(9,1)
+    s4 = datetime.time(9,2)
+    p0 = p0[p0['hm'] !='11']
+    p0 = p0[p0['hm'] !='12']
+    p0 = p0[p0['hm'] !='91']
+    p0 = p0[p0['hm'] !='92']
     #print(p0)
     startyear = 2017
     endyear = 2018
