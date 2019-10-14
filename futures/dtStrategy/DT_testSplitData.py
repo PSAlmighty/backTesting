@@ -5,11 +5,12 @@ import datetime  # For datetime objects
 import os.path  # To manage paths
 import sys  # To find out the script name (in argv[0])
 import backtrader as bt
-import backtrader.analyzers as btanalyzers
+#import backtrader.analyzers as btanalyzers
 import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
 from dtClasses.dtStrategyV12 import maxRiskSizer,dtStrategyV12
+from dtClasses.accvalAnalyzer import AcctStats
 from backtrader import cerebro
 
 def pretty(d, indent=0):
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     lv_mult = 10000
     lv_cash = 3000000
     startyear = 2009
-    endyear = 2018
+    endyear = 2019
     starttime = datetime.datetime(startyear, 1, 1)
     daterange = splitDF(p0,3)
     lv_endval = 0
@@ -68,17 +69,26 @@ if __name__ == '__main__':
     lv_maxdd = 0
     lv_ddtime = 0
     rst = []
+    lv_timegroup = 'TimeFrame'
+    lv_params123 = ""
     for idx,val in enumerate(daterange):
         if idx == 0:
             continue
         # for every range do the back testing via cebero and save the result in a list
         # save the result and eveluate the performance
         # Create a cerebro entity    
-        cerebro = bt.Cerebro(maxcpus=7,tradehistory=True)
-        
+        lv_timegroup = lv_timegroup + str(idx)
+        cerebro = bt.Cerebro(maxcpus=1,optreturn=False,stdstats=False,tradehistory=True)
+        #cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
+        strats = cerebro.optstrategy(
+            dtStrategyV12,
+            k=range(4,5 ,1), 
+            differ=range(0,1 ,1), 
+            rangeDays =range(4, 5,1)
+            )                 
         cerebro.addstrategy(dtStrategyV12)
-        #cerebro.addsizer(maxRiskSizer)
-        cerebro.addsizer(bt.sizers.FixedSize, stake=1)
+        cerebro.addsizer(maxRiskSizer)
+        #cerebro.addsizer(bt.sizers.FixedSize, stake=1)
         #cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
         # Set the commission
         cerebro.broker.setcommission(leverage=1,mult =lv_mult,commission=0.01)
@@ -102,23 +112,28 @@ if __name__ == '__main__':
         cerebro.addanalyzer(btanalyzers.SQN, _name='SQN')
         cerebro.addanalyzer(btanalyzers.TradeAnalyzer, _name='TradeAnalyzer')    
         cerebro.addanalyzer(btanalyzers.Transactions, _name='TXs')
-        thestrats = cerebro.run()
-        thestrat = thestrats[0]
-        # Print out the final result
-        lv_endval = cerebro.broker.getvalue()
-        lv_sharp = thestrat.analyzers.mysharpe.get_analysis()['sharperatio']
-        lv_vwr = thestrat.analyzers.vwr.get_analysis()['vwr']
-        lv_return = thestrat.analyzers.logreturn.get_analysis()['rnorm'] 
-        lv_sqn =  thestrat.analyzers.SQN.get_analysis()['sqn']
-        td =  thestrat.analyzers.TradeAnalyzer.get_analysis()
-        lv_cnt = td['total']['total']
-        lv_win = td['won']['total']
-        lv_avgpnl = td['pnl']['net']['average']
-        lv_winavg = td['won']['pnl']['average']
-        lv_lossavg = td['lost']['pnl']['average']
-        line = [val,lv_endval,lv_sharp,lv_vwr,lv_return,lv_sqn,lv_cnt,lv_win,lv_avgpnl,lv_winavg,lv_lossavg]
-        rst.append(line)
+        cerebro.addanalyzer(AcctStats,_name = 'AcctStats')
+        strats = cerebro.run()
+        for run in strats :
+            lv_params123 = str(run[0].params.k)
+            print(lv_params123)
+            for thestrat in run:
+                #thestrat = thestrats[0]
+                # Print out the final result
+                lv_endval = thestrat.analyzers.AcctStats.get_analysis()['end']
+                lv_sharp = thestrat.analyzers.mysharpe.get_analysis()['sharperatio']
+                lv_vwr = thestrat.analyzers.vwr.get_analysis()['vwr']
+                lv_return = thestrat.analyzers.logreturn.get_analysis()['rnorm'] 
+                lv_sqn =  thestrat.analyzers.SQN.get_analysis()['sqn']
+                td =  thestrat.analyzers.TradeAnalyzer.get_analysis()
+                lv_cnt = td['total']['total']
+                lv_win = td['won']['total']
+                lv_avgpnl = td['pnl']['net']['average']
+                lv_winavg = td['won']['pnl']['average']
+                lv_lossavg = td['lost']['pnl']['average']
+                line = [lv_timegroup,val,lv_endval,lv_sharp,lv_vwr,lv_return,lv_sqn,lv_cnt,lv_win,lv_avgpnl,lv_winavg,lv_lossavg]
+                rst.append(line)
     
-    mydf = pd.DataFrame(rst,columns = ['Enddate','Endvalue','Sharp','VWR','Logreturn','SQN','Count','wincnt','AvgPnL','AvgWin','AvgLoss'])
+    mydf = pd.DataFrame(rst,columns = ['TimeGroup','Enddate','Endvalue','Sharp','VWR','Logreturn','SQN','Count','wincnt','AvgPnL','AvgWin','AvgLoss'])
     mydf.to_csv("./tempOut/bt/"+sbname+".csv")
     print("Congratulations, succed!")

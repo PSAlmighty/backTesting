@@ -271,6 +271,8 @@ def pretty(d, indent=0):
 if __name__ == '__main__':
     # Create a cerebro entity
     lv_mult = 10
+    lv_symbol = 'rb'
+    lv_filename = '../../datas/' + lv_symbol + 'index.csv'
     cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
         
     cerebro.addstrategy(DTStrategy01)
@@ -288,7 +290,7 @@ if __name__ == '__main__':
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, '../../datas/rbindex.csv')
+    datapath = os.path.join(modpath, lv_filename)
 
     tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks,
                    monthly=bt.TimeFrame.Months)
