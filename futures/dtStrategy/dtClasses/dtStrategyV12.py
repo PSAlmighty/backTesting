@@ -19,7 +19,7 @@ class maxRiskSizer(bt.Sizer):
     Returns the number of shares rounded down that can be purchased for the
     max rish tolerance
     '''
-    params = (('risk', 0.01),)
+    params = (('risk', 0.02),)
 
     def __init__(self):
         if self.p.risk > 1 or self.p.risk < 0:
@@ -60,9 +60,9 @@ class maxRiskSizer(bt.Sizer):
 class dtStrategyV12(bt.Strategy):
     params = (
         ('ordersize', 1),
-        ('k',5 ),
+        ('k',4 ),
         ('differ',0 ),
-        ('rangeDays',6 )
+        ('rangeDays',5 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -240,6 +240,7 @@ class dtStrategyV12(bt.Strategy):
             pass              
     def stop(self):
         pass
+        #print(self.broker.getvalue())
         #print('%.2f,%.2f,%.2f,%.2f,,%2d,%2d,%.2f' %
         #         (self.params.k,self.params.differ,self.params.rangeDays, self.tradeCount,self.winCount,self.loseCount,self.broker.getvalue()))
 

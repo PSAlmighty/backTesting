@@ -12,11 +12,12 @@ import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
 import math
+from dtClasses.dtStrategyV12 import maxRiskSizer,dtStrategyV12
 #from btreport.report import Cerebro
 
 
 # Create a Sizer
-class maxRiskSizer(bt.Sizer):
+class maxRiskSizer11(bt.Sizer):
     '''
     Returns the number of shares rounded down that can be purchased for the
     max rish tolerance
@@ -59,7 +60,7 @@ class maxRiskSizer(bt.Sizer):
 
 
 # Create a Stratey
-class DTStrategy01(bt.Strategy):
+class DTStrategy0111(bt.Strategy):
     params = (
         ('ordersize', 1),
         ('k',4 ),
@@ -257,7 +258,7 @@ if __name__ == '__main__':
     cerebro = bt.Cerebro(maxcpus=4,optreturn=False,stdstats=False)
     
     strats = cerebro.optstrategy(
-        DTStrategy01,
+        dtStrategyV12,
         ordersize = 1,
         k=range(4,7 ,1), 
         differ=range(0,1 ,1), 

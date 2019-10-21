@@ -12,9 +12,10 @@ import time
 import pandas as pd
 import backtrader.analyzers as btanalyzers
 import math
+from dtClasses.dtStrategyV12 import maxRiskSizer,dtStrategyV12
 
 # Create a Sizer
-class maxRiskSizer(bt.Sizer):
+class maxRiskSizer111(bt.Sizer):
     '''
     Returns the number of shares rounded down that can be purchased for the
     max rish tolerance
@@ -57,12 +58,12 @@ class maxRiskSizer(bt.Sizer):
 
 
 # Create a Stratey
-class DTStrategy01(bt.Strategy):
+class DTStrategy01111(bt.Strategy):
     params = (
         ('ordersize', 1),
-        ('k',5 ),
+        ('k',4 ),
         ('differ',0 ),
-        ('rangeDays',6 )
+        ('rangeDays',5 )
     )
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -75,7 +76,7 @@ class DTStrategy01(bt.Strategy):
         self.loseCount = 0 
                        
 
-        self.orderSize = self.params.ordersize   
+        #self.orderSize = self.params.ordersize   
         #self.getsizing(self,self.datas)
         #self.params.ordersize
         # Keep a reference to the "close" line in the data[0] dataseries
@@ -270,12 +271,15 @@ def pretty(d, indent=0):
 
 if __name__ == '__main__':
     # Create a cerebro entity
-    lv_mult = 10
-    lv_symbol = 'rb'
+    lv_mult = 100
+    lv_symbol = 'I'
     lv_filename = '../../datas/' + lv_symbol + 'index.csv'
     cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
         
-    cerebro.addstrategy(DTStrategy01)
+    cerebro.addstrategy(dtStrategyV12)
+    cerebro.params.k = 4
+    cerebro.params.differ = 0
+    cerebro.params.rangeDays = 5
     cerebro.addsizer(maxRiskSizer)
     cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
     cerebro.addanalyzer(btanalyzers.AnnualReturn, _name='annual')    
@@ -323,18 +327,30 @@ if __name__ == '__main__':
     p0["hour"] = str(p0.index.hour)
     p0["min"] = str(p0.index.minute)
     p0["hm"] = p0["hour"]+p0["min"]
-    s1 = datetime.time(1,1)
-    s2 = datetime.time(1,2)
-    s3 = datetime.time(9,1)
-    s4 = datetime.time(9,2)
-    p0 = p0[p0['hm'] !='11']
-    p0 = p0[p0['hm'] !='12']
-    p0 = p0[p0['hm'] !='91']
-    p0 = p0[p0['hm'] !='92']
+    if lv_symbol != 'T':
+        #s1 = datetime.time(1,1)
+        #s2 = datetime.time(1,2)
+        #s3 = datetime.time(9,1)
+        #s4 = datetime.time(9,2)
+    
+        p0 = p0[p0['hm'] !='11']
+        p0 = p0[p0['hm'] !='12']
+        p0 = p0[p0['hm'] !='91']
+        p0 = p0[p0['hm'] !='92']    
+    else:
+        #s1 = datetime.time(1,1)
+        #s2 = datetime.time(1,2)
+        #s3 = datetime.time(9,15)
+        #s4 = datetime.time(9,16)
+    
+        p0 = p0[p0['hm'] !='11']
+        p0 = p0[p0['hm'] !='12']
+        p0 = p0[p0['hm'] !='915']
+        p0 = p0[p0['hm'] !='916']  
     #print(p0)
-    startyear = 2017
-    endyear = 2018
-    sbname ="T"
+    startyear = 2009
+    endyear = 2020
+    #sbname ="T"
     data = bt.feeds.PandasData(dataname = p0,fromdate=datetime.datetime(startyear, 3, 2),
         todate=datetime.datetime(endyear, 3, 1),
         timeframe= bt.TimeFrame.Minutes,
@@ -349,7 +365,7 @@ if __name__ == '__main__':
     #cerebro.resampledata(data, timeframe=tframes["daily"],compression=1)
 
     # Set our desired cash start
-    cerebro.broker.setcash(300000.0)
+    cerebro.broker.setcash(1000000.0)
 
     # Add a FixedSize sizer according to the stake
     #cerebro.addsizer(bt.sizers.FixedSize, stake=3)
@@ -423,6 +439,6 @@ if __name__ == '__main__':
         if value.status == 2:
             pnl.append(value.pnlcomm)
     df = pd.DataFrame(pnl,columns = ["pnl"])
-    df.to_csv("./pnl/"+sbname+"_pnl"+str(endyear)+".csv")
+    df.to_csv("./pnl/"+lv_symbol+"_pnl"+str(endyear)+".csv")
     #print(td)
     #print(cntDF  )       
