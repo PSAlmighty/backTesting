@@ -11,7 +11,7 @@ from audioop import avg
 def split_line(text,idx):
     l = [word for word in text.split(",")]
     return l[idx]
-lv_path = "./datas/I.csv"
+lv_path = "./datas/T.csv"
 
 df = pd.read_csv(lv_path,index_col = 0)
 df = df[df["Count"]>8]

@@ -47,7 +47,7 @@ def date_range(start, end, intv):
 if __name__ == '__main__':    
     #read K line data and split
     sbname ="I"
-    knum = 10
+    knum = 1
     lv_tg_cnt = 3
     lv_path = '../../datas/'
     lv_mult = 100

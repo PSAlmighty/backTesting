@@ -272,8 +272,9 @@ def pretty(d, indent=0):
 if __name__ == '__main__':
     # Create a cerebro entity
     lv_mult = 100
-    lv_symbol = 'I'
+    lv_symbol = 'i'
     lv_filename = '../../datas/' + lv_symbol + 'index.csv'
+    lv_filename = '../../datas/' + lv_symbol + '1909.csv'
     cerebro = bt.Cerebro(maxcpus=6,tradehistory=True)
         
     cerebro.addstrategy(dtStrategyV12)

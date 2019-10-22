@@ -6,7 +6,7 @@ Created on Sep 10, 2019
 import pandas as pd
 from matplotlib import pyplot as plt
 
-df = pd.read_csv("./datas/I_pnl2020.csv")
+df = pd.read_csv("./datas/T_pnl2020.csv")
 df["zeros"] = 0
 df["std"] = df['pnl']/df['pnl'].std()
 ax = df.plot.scatter(x = 0,y='pnl')
